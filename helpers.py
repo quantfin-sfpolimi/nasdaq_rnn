@@ -29,9 +29,12 @@ def pickle_dump(obj, filename):
 def pickle_load(filename):
     if not re.search("^.*\.pkl$", filename):
         filename += ".pkl"
-        
-    with open(filename, "rb") as f:
-        obj = pickle.load(f)
+    
+    try: 
+        with open(filename, "rb") as f:
+            obj = pickle.load(f)
+        except FileNotFoundError:
+            print(filename, " doesn't exist.")
 
     return obj
 
