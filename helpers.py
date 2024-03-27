@@ -34,11 +34,12 @@ def pickle_dump(obj, filename):
     if not re.search("^.*\.pkl$", filename):
         filename += ".pkl"
 
-    with open(filename, "wb") as f:
+    file_path = "./pickle_files/" + filename
+    with open(file_path, "wb") as f:
         pickle.dump(obj, f)
 
 
-def pickle_load(filename):
+def pickle_dump(filename):
     """
     Load a serialized object from a file using pickle.
 
@@ -54,25 +55,40 @@ def pickle_load(filename):
     if not re.search("^.*\.pkl$", filename):
         filename += ".pkl"
 
-    with open(filename, "rb") as f:
-        obj = pickle.load(f)
+    file_path = "./pickle_files/" + filename
 
-    return obj
+    try:
+        with open(file_path, "rb") as f:
+            obj = pickle.load(f)
+        return obj
+    except FileNotFoundError:
+        print("This file " + file_path + " does not exists")
+        return None
 
-
-def load_dataframe(years):
+def load_dataframe(years, filename):
     """
-    Loads stock price data either from a pickled file or downloads it online using the yfinance library.
-    Returns a pandas DataFrame containing the stock prices and a list of tickers.
+    Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
 
     Parameters:
-        years (int): Number of years of historical data to load.
+    years: list
+        A list of years for which the stock prices are required.
+    filename: str
+        The name of the file containing the serialized DataFrame. If the filename
+        does not end with ".pkl", it will be appended automatically.
 
     Returns:
-        Tuple[pandas.DataFrame, List[str]]: A tuple containing the pandas DataFrame of stock prices and a list of tickers.
+    stock_prices: DataFrame
+        A DataFrame containing stock prices for the given years.
+    tickers: list
+        A list of tickers representing the stocks in the DataFrame.
     """
-    if os.path.isfile("stocks_prices_dataframe.pkl"):
-        stock_prices = pickle_load("stocks_prices_dataframe.pkl")
+    if not re.search("^.*\.pkl$", filename):
+        filename += ".pkl"
+
+    file_path = "./pickle_files/" + filename
+
+    if os.path.isfile(file_path):
+        stock_prices = pickle_load(filename)
         tickers = stock_prices.columns.tolist()
     else:
         tickers = get_stockex_tickers()
