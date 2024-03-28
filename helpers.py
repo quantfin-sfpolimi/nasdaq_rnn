@@ -11,52 +11,84 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM, Dropout
 from keras.callbacks import History
 from zlib import crc32
+import re
 
 history = History()  # Ignore, it helps with model_data function
 
 
-def pickle_dump(stocks_prices):
+def pickle_dump(obj, filename):
     """
-    Pickles the given pandas DataFrame containing stock prices into a file named "stocks_prices_dataframe.pkl".
+    Serialize the given object and save it to a file using pickle.
 
     Parameters:
-        stocks_prices (pandas.DataFrame): DataFrame containing stock prices to be pickled.
+    obj:
+        anything, dataset or ML model
+    filename: str
+        The name of the file to which the object will be saved. If the filename
+        does not end with ".pkl", it will be appended automatically.
 
     Returns:
-        None
+    None
     """
-    with open("stocks_prices_dataframe.pkl", "wb") as f:
-        pickle.dump(stocks_prices, f)
+    # Check if filename ends with ".pkl", if not add it
+    if not re.search("^.*\.pkl$", filename):
+        filename += ".pkl"
+
+    file_path = "./pickle_files/" + filename
+    with open(file_path, "wb") as f:
+        pickle.dump(obj, f)
 
 
 def pickle_load(filename):
     """
-    Unpickles and loads a pandas DataFrame from the specified file.
+    Load a serialized object from a file using pickle.
 
     Parameters:
-        filename (str): Name of the file to unpickle.
+    filename: str
+        The name of the file from which the object will be loaded. If the filename
+        does not end with ".pkl", it will be appended automatically.
 
     Returns:
-        pandas.DataFrame: DataFrame containing the unpickled data.
+    obj: any Python object
+        The deserialized object loaded from the file.
     """
-    with open(filename, "rb") as f:
-        stocks_prices = pickle.load(f)
-    return stocks_prices
+    if not re.search("^.*\.pkl$", filename):
+        filename += ".pkl"
 
+    file_path = "./pickle_files/" + filename
 
-def load_dataframe(years):
+    try:
+        with open(file_path, "rb") as f:
+            obj = pickle.load(f)
+        return obj
+    except FileNotFoundError:
+        print("This file " + file_path + " does not exists")
+        return None
+
+def load_dataframe(years, filename):
     """
-    Loads stock price data either from a pickled file or downloads it online using the yfinance library.
-    Returns a pandas DataFrame containing the stock prices and a list of tickers.
+    Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
 
     Parameters:
-        years (int): Number of years of historical data to load.
+    years: list
+        A list of years for which the stock prices are required.
+    filename: str
+        The name of the file containing the serialized DataFrame. If the filename
+        does not end with ".pkl", it will be appended automatically.
 
     Returns:
-        Tuple[pandas.DataFrame, List[str]]: A tuple containing the pandas DataFrame of stock prices and a list of tickers.
+    stock_prices: DataFrame
+        A DataFrame containing stock prices for the given years.
+    tickers: list
+        A list of tickers representing the stocks in the DataFrame.
     """
-    if os.path.isfile("stocks_prices_dataframe.pkl"):
-        stock_prices = pickle_load("stocks_prices_dataframe.pkl")
+    if not re.search("^.*\.pkl$", filename):
+        filename += ".pkl"
+
+    file_path = "./pickle_files/" + filename
+
+    if os.path.isfile(file_path):
+        stock_prices = pickle_load(filename)
         tickers = stock_prices.columns.tolist()
     else:
         tickers = get_stockex_tickers()
