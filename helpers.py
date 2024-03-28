@@ -39,7 +39,7 @@ def pickle_dump(obj, filename):
         pickle.dump(obj, f)
 
 
-def pickle_dump(filename):
+def pickle_load(filename):
     """
     Load a serialized object from a file using pickle.
 
