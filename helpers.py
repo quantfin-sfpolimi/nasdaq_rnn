@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import pickle
 import yfinance as yf
+from openbb import obb
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
@@ -130,7 +131,7 @@ def get_stockex_tickers(link):
     return tickers
 
 
-def loaded_df(years, tickers):
+def loaded_df(years, tickers, interval):
     """
     Downloads stock price data for the specified number of years and tickers using yfinance.
     Returns a pandas DataFrame and pickles the data.
@@ -138,18 +139,19 @@ def loaded_df(years, tickers):
     Parameters:
         years (int): Number of years of historical data to load.
         tickers (List[str]): List of ticker symbols.
+        interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
 
     Returns:
         pandas.DataFrame: DataFrame containing downloaded stock price data.
     """
     stocks_dict = {}
     time_window = 365 * years
-    start_date = dt.datetime.now() - dt.timedelta(time_window)
-    end_date = dt.datetime.now()
+    start_date = dt.date.today() - dt.timedelta(time_window)
+    end_date = dt.date.today()
     for i, ticker in enumerate(tickers):
         print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
-        prices = yf.download(ticker, start=start_date, end=end_date)
-        stocks_dict[ticker] = prices['Adj Close']
+        prices = obb.equity.price.historical(ticker ,start_date = start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
+        stocks_dict[ticker] = prices['close']
 
     stocks_prices = pd.DataFrame.from_dict(stocks_dict)
     pickle_dump(stocks_prices=stocks_prices)
