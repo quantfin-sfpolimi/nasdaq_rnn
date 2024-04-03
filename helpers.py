@@ -66,7 +66,7 @@ def pickle_load(filename):
         print("This file " + file_path + " does not exists")
         return None
 
-def load_dataframe(years, filename):
+def load_dataframe(years, filename, interval):
     """
     Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
 
@@ -93,7 +93,7 @@ def load_dataframe(years, filename):
         tickers = stock_prices.columns.tolist()
     else:
         tickers = get_stockex_tickers()
-        stock_prices = loaded_df(years=years, tickers=tickers)
+        stock_prices = loaded_df(years=years, tickers=tickers, interval=interval)
 
     return stock_prices, tickers
 
