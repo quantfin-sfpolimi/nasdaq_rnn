@@ -1,42 +1,55 @@
-# Libraries used
+# Libraries used 
 import datetime as dt
 import numpy as np
 import os
 import pandas as pd
 import pickle
 import yfinance as yf
+from openbb import obb
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Dropout
 from keras.callbacks import History
 from zlib import crc32
+import re
 
 history = History()  # Ignore, it helps with model_data function
 
 # file saving with pickling
 
 
-def pickle_dump(stocks_prices):
+def pickle_dump(obj, filename):
     """
-    Pickles the given pandas DataFrame containing stock prices into a file named "stocks_prices_dataframe.pkl".
+    Serialize the given object and save it to a file using pickle.
 
     Parameters:
-        stocks_prices (pandas.DataFrame): DataFrame containing stock prices to be pickled.
+    obj:
+        anything, dataset or ML model
+    filename: str
+        The name of the file to which the object will be saved. If the filename
+        does not end with ".pkl", it will be appended automatically.
 
     Returns:
-        None
+    None
     """
-    with open("stocks_prices_dataframe.pkl", "wb") as f:
-        pickle.dump(stocks_prices, f)
+    # Check if filename ends with ".pkl", if not add it
+    if not re.search("^.*\.pkl$", filename):
+        filename += ".pkl"
+
+    file_path = "./pickle_files/" + filename
+    with open(file_path, "wb") as f:
+        pickle.dump(obj, f)
 
 
 def pickle_load(filename):
     """
-    Unpickles and loads a pandas DataFrame from the specified file.
+    Load a serialized object from a file using pickle.
 
     Parameters:
-        filename (str): Name of the file to unpickle.
+    filename: str
+        The name of the file from which the object will be loaded. If the filename
+        does not end with ".pkl", it will be appended automatically.
 
     Returns:
     obj: any Python object
@@ -55,10 +68,9 @@ def pickle_load(filename):
         print("This file " + file_path + " does not exists")
         return None
 
-def load_dataframe(years, filename):
+def load_dataframe(years, filename, link, interval):
     """
-    Loads stock price data either from a pickled file or downloads it online using the yfinance library.
-    Returns a pandas DataFrame containing the stock prices and a list of tickers.
+    Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
 
     Parameters:
     years: list
@@ -73,8 +85,13 @@ def load_dataframe(years, filename):
     tickers: list
         A list of tickers representing the stocks in the DataFrame.
     """
-    if os.path.isfile("stocks_prices_dataframe.pkl"):
-        stock_prices = pickle_load("stocks_prices_dataframe.pkl")
+    if not re.search("^.*\.pkl$", filename):
+        filename += ".pkl"
+
+    file_path = "./pickle_files/" + filename
+
+    if os.path.isfile(file_path):
+        stock_prices = pickle_load(filename)
         tickers = stock_prices.columns.tolist()
     else:
         tickers = get_stockex_tickers(link=link)
@@ -102,7 +119,7 @@ def get_stockex_tickers(link):
     return tickers
 
 
-def loaded_df(years, tickers):
+def loaded_df(years, tickers, interval):
     """
     Downloads stock price data for the specified number of years and tickers using yfinance.
     Returns a pandas DataFrame and pickles the data.
@@ -110,14 +127,15 @@ def loaded_df(years, tickers):
     Parameters:
         years (int): Number of years of historical data to load.
         tickers (List[str]): List of ticker symbols.
+        interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
 
     Returns:
         pandas.DataFrame: DataFrame containing downloaded stock price data.
     """
     stocks_dict = {}
     time_window = 365 * years
-    start_date = dt.datetime.now() - dt.timedelta(time_window)
-    end_date = dt.datetime.now()
+    start_date = dt.date.today() - dt.timedelta(time_window)
+    end_date = dt.date.today()
     for i, ticker in enumerate(tickers):
         print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
         prices = obb.equity.price.historical(ticker ,start_date = start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
@@ -203,6 +221,14 @@ def final_clean_df(adj_close_df):
                         adj_close_df.at[day_index, ticker] = interpolated
             except Exception as e:
                 print(f"Error occurred: {e}")
+    #need to check something
+    counter_na = 0
+    for day_index in adj_close_df.index:
+        for ticker in adj_close_df.columns:
+            value = adj_close_df.at[day_index, ticker]
+            if pd.isna(value):
+                counter_na += 1
+    print(counter_na)
     return adj_close_df
 
 # machine learning algorithms
