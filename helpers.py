@@ -1,4 +1,4 @@
-# Libraries used 
+# Libraries used
 import datetime as dt
 import numpy as np
 import os
@@ -68,6 +68,7 @@ def pickle_load(filename):
         print("This file " + file_path + " does not exists")
         return None
 
+
 def load_dataframe(years, filename, link, interval):
     """
     Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
@@ -95,10 +96,10 @@ def load_dataframe(years, filename, link, interval):
         tickers = stock_prices.columns.tolist()
     else:
         tickers = get_stockex_tickers(link=link)
-        stock_prices = loaded_df(years=years, tickers=tickers, interval=interval)
+        stock_prices = loaded_df(
+            years=years, tickers=tickers, interval=interval)
 
     return stock_prices, tickers
-
 
 
 def get_stockex_tickers(link):
@@ -138,7 +139,8 @@ def loaded_df(years, tickers, interval):
     end_date = dt.date.today()
     for i, ticker in enumerate(tickers):
         print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
-        prices = obb.equity.price.historical(ticker ,start_date = start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
+        prices = obb.equity.price.historical(
+            ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
         stocks_dict[ticker] = prices['close']
 
     stocks_prices = pd.DataFrame.from_dict(stocks_dict)
@@ -190,7 +192,7 @@ def clean_df(percentage, tickers, stocks_prices):
             if count_nan > (len(stocks_prices) * percentage):
                 stocks_prices.drop(ticker, axis=1, inplace=True)
 
-    stocks_prices = final_clean_df(stocks_prices)
+    stocks_prices.interpolate(axis=1, inplace = True)
     pickle_dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
     return stocks_prices
 
@@ -208,30 +210,15 @@ def final_clean_df(adj_close_df):
     pandas.DataFrame: A DataFrame with missing values filled using linear interpolation.
     If there were no missing values to interpolate, the original DataFrame is returned.
     """
-    for day_index in adj_close_df.index:
-        for ticker in adj_close_df.columns:
-            try:
-                value = adj_close_df.at[day_index, ticker]
-                if pd.isna(value):
-                    index_loc = adj_close_df.index.get_loc(day_index)
-                    previous = adj_close_df.at[adj_close_df.index[index_loc - 1], ticker] if index_loc > 0 else None
-                    later = adj_close_df.at[adj_close_df.index[index_loc + 1], ticker] if index_loc < len(adj_close_df) - 1 else None
-                    if previous is not None and later is not None:
-                        interpolated = (previous + later) / 2
-                        adj_close_df.at[day_index, ticker] = interpolated
-            except Exception as e:
-                print(f"Error occurred: {e}")
-    #need to check something
-    counter_na = 0
-    for day_index in adj_close_df.index:
-        for ticker in adj_close_df.columns:
-            value = adj_close_df.at[day_index, ticker]
-            if pd.isna(value):
-                counter_na += 1
-    print(counter_na)
+    try:
+        adj_close_df.interpolate(axis=1, inplace = True)
+    except Exception as e:
+        print(f"Error occurred: {e}")
     return adj_close_df
 
+
 # machine learning algorithms
+
 
 def xtrain_ytrain(adj_close_df):
     """
