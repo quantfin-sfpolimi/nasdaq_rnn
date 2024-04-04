@@ -1,4 +1,4 @@
-# Libraries used 
+# Libraries used
 import datetime as dt
 import numpy as np
 import os
@@ -16,7 +16,12 @@ import re
 
 history = History()  # Ignore, it helps with model_data function
 
+# file saving with pickling
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> giulia
 def pickle_dump(obj, filename):
     """
     Serialize the given object and save it to a file using pickle.
@@ -55,9 +60,23 @@ def pickle_load(filename):
     """
     if not re.search("^.*\.pkl$", filename):
         filename += ".pkl"
+<<<<<<< HEAD
+=======
 
     file_path = "./pickle_files/" + filename
 
+    try:
+        with open(file_path, "rb") as f:
+            obj = pickle.load(f)
+        return obj
+    except FileNotFoundError:
+        print("This file " + file_path + " does not exists")
+        return None
+>>>>>>> giulia
+
+    file_path = "./pickle_files/" + filename
+
+<<<<<<< HEAD
     try:
         with open(file_path, "rb") as f:
             obj = pickle.load(f)
@@ -94,8 +113,86 @@ def load_dataframe(years, filename, interval):
     else:
         tickers = get_stockex_tickers()
         stock_prices = loaded_df(years=years, tickers=tickers, interval=interval)
+=======
+def load_dataframe(years, filename, link, interval):
+    """
+    Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
+
+    Parameters:
+    years: list
+        A list of years for which the stock prices are required.
+    filename: str
+        The name of the file containing the serialized DataFrame. If the filename
+        does not end with ".pkl", it will be appended automatically.
+
+    Returns:
+    stock_prices: DataFrame
+        A DataFrame containing stock prices for the given years.
+    tickers: list
+        A list of tickers representing the stocks in the DataFrame.
+    """
+    if not re.search("^.*\.pkl$", filename):
+        filename += ".pkl"
+
+    file_path = "./pickle_files/" + filename
+
+    if os.path.isfile(file_path):
+        stock_prices = pickle_load(filename)
+        tickers = stock_prices.columns.tolist()
+    else:
+        tickers = get_stockex_tickers(link=link)
+        stock_prices = loaded_df(
+            years=years, tickers=tickers, interval=interval)
 
     return stock_prices, tickers
+
+
+def get_stockex_tickers(link):
+    """
+    Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
+
+    Parameters:
+        link (str): Link to the Wikipedia page containing stock exchange information.
+
+    Returns:
+        List[str]: List of ticker symbols.
+    """
+    tables = pd.read_html(link)
+    df = tables[4]
+    df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'],
+            axis=1, inplace=True)
+    tickers = df['Ticker'].values.tolist()
+    return tickers
+
+
+def loaded_df(years, tickers, interval):
+    """
+    Downloads stock price data for the specified number of years and tickers using yfinance.
+    Returns a pandas DataFrame and pickles the data.
+
+    Parameters:
+        years (int): Number of years of historical data to load.
+        tickers (List[str]): List of ticker symbols.
+        interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
+
+    Returns:
+        pandas.DataFrame: DataFrame containing downloaded stock price data.
+    """
+    stocks_dict = {}
+    time_window = 365 * years
+    start_date = dt.date.today() - dt.timedelta(time_window)
+    end_date = dt.date.today()
+    for i, ticker in enumerate(tickers):
+        print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
+        prices = obb.equity.price.historical(
+            ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
+        stocks_dict[ticker] = prices['close']
+>>>>>>> giulia
+
+    stocks_prices = pd.DataFrame.from_dict(stocks_dict)
+    return stocks_prices
+
+# cleaning dataframe
 
 
 def hashing_and_splitting(adj_close_df):
@@ -114,6 +211,7 @@ def hashing_and_splitting(adj_close_df):
     return adj_close_df[~test_indices], adj_close_df[test_indices]
 
 
+<<<<<<< HEAD
 def get_stockex_tickers(link):
     """
     Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
@@ -158,27 +256,61 @@ def loaded_df(years, tickers, interval):
     return stocks_prices
 
 
+=======
+>>>>>>> giulia
 def clean_df(percentage, tickers, stocks_prices):
     """
     Cleans the DataFrame by dropping stocks with NaN values exceeding the given percentage threshold.
+    The cleaned DataFrame is pickled after the operation.
 
     Parameters:
-        percentage (float): Percentage threshold for NaN values.
-        tickers (List[str]): List of ticker symbols.
-        stocks_prices (pandas.DataFrame): DataFrame containing stock prices.
+    percentage : float
+        Percentage threshold for NaN values. If greater than 1, it's interpreted as a percentage (e.g., 5 for 5%).
+    tickers : List[str]
+        List of ticker symbols.
+    stocks_prices : pandas.DataFrame
+        DataFrame containing stock prices.
 
     Returns:
-        pandas.DataFrame: Cleaned DataFrame.
+    pandas.DataFrame
+        Cleaned DataFrame with NaN values exceeding the threshold removed.
     """
     if percentage > 1:
         percentage = percentage / 100
+
     for ticker in tickers:
         nan_values = stocks_prices[ticker].isnull().values.any()
         if nan_values:
             count_nan = stocks_prices[ticker].isnull().sum()
             if count_nan > (len(stocks_prices) * percentage):
                 stocks_prices.drop(ticker, axis=1, inplace=True)
+
+    stocks_prices.interpolate(axis=1, inplace = True)
+    pickle_dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
     return stocks_prices
+
+
+def final_clean_df(adj_close_df):
+    """
+    Perform linear interpolation to fill missing values (NaNs) in the given DataFrame.
+
+    Parameters:
+    - adj_close_df (pandas.DataFrame): A DataFrame where rows represent tickers
+      and columns represent dates. Each cell contains the adjusted closing price
+      of the corresponding ticker on the respective date.
+
+    Returns:
+    pandas.DataFrame: A DataFrame with missing values filled using linear interpolation.
+    If there were no missing values to interpolate, the original DataFrame is returned.
+    """
+    try:
+        adj_close_df.interpolate(axis=1, inplace = True)
+    except Exception as e:
+        print(f"Error occurred: {e}")
+    return adj_close_df
+
+
+# machine learning algorithms
 
 
 def xtrain_ytrain(adj_close_df):
@@ -229,7 +361,8 @@ def lstm_model(xtrain, ytrain):
         Sequential: Trained LSTM model.
     """
     model = Sequential()
-    model.add(LSTM(units=50, activation='relu', return_sequences=True, input_shape=(xtrain.shape[1], 1)))
+    model.add(LSTM(units=50, activation='relu',
+              return_sequences=True, input_shape=(xtrain.shape[1], 1)))
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
     model.add
