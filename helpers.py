@@ -18,7 +18,6 @@ history = History()  # Ignore, it helps with model_data function
 
 # file saving with pickling
 
-
 def pickle_dump(obj, filename):
     """
     Serialize the given object and save it to a file using pickle.
@@ -40,6 +39,7 @@ def pickle_dump(obj, filename):
     file_path = "./pickle_files/" + filename
     with open(file_path, "wb") as f:
         pickle.dump(obj, f)
+
 
 
 def pickle_load(filename):
@@ -99,10 +99,7 @@ def load_dataframe(years, filename, link, interval):
         stock_prices = loaded_df(
             years=years, tickers=tickers, interval=interval)
 
-    return stock_prices, tickers
-
-
-def get_stockex_tickers(link):
+    return stock_prices, tickersdef get_stockex_tickers(link):
     """
     Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
 
@@ -118,6 +115,7 @@ def get_stockex_tickers(link):
             axis=1, inplace=True)
     tickers = df['Ticker'].values.tolist()
     return tickers
+
 
 
 def loaded_df(years, tickers, interval):
