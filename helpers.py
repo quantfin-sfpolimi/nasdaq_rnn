@@ -192,30 +192,9 @@ def clean_df(percentage, tickers, stocks_prices):
             if count_nan > (len(stocks_prices) * percentage):
                 stocks_prices.drop(ticker, axis=1, inplace=True)
 
-    stocks_prices.interpolate(axis=1, inplace = True)
+    stocks_prices.ffill(axis=1, inplace = True)
     pickle_dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
     return stocks_prices
-
-
-def final_clean_df(adj_close_df):
-    """
-    Perform linear interpolation to fill missing values (NaNs) in the given DataFrame.
-
-    Parameters:
-    - adj_close_df (pandas.DataFrame): A DataFrame where rows represent tickers
-      and columns represent dates. Each cell contains the adjusted closing price
-      of the corresponding ticker on the respective date.
-
-    Returns:
-    pandas.DataFrame: A DataFrame with missing values filled using linear interpolation.
-    If there were no missing values to interpolate, the original DataFrame is returned.
-    """
-    try:
-        adj_close_df.interpolate(axis=1, inplace = True)
-    except Exception as e:
-        print(f"Error occurred: {e}")
-    return adj_close_df
-
 
 # machine learning algorithms
 
