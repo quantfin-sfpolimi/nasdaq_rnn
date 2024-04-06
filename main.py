@@ -2,8 +2,6 @@ from openbb import obb
 import pandas as pd
 from helpers import load_dataframe, clean_df, get_correlated_stocks, plot_corr_matrix
 
-from ydata_profiling import ProfileReport
-
 # simo's login with obb platform credetial
 obb.account.login(email='simo05062003@gmail.com', password='##2yTFb2F4Zd9z')
 #load data, clean data frame (closing stock prices)
