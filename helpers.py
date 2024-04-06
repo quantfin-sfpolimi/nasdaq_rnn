@@ -252,3 +252,36 @@ def lstm_model(xtrain, ytrain):
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
     model.add
+
+##correlation study
+def plot_corr_matrix(dataframe, start_datetime, end_datetime):
+
+  norm = matplotlib.colors.Normalize(-1,1)
+  colors = [[norm(-1), "red"],
+          [norm(-0.93), "lightgrey"],
+          [norm( 0.93), "lightgrey"],
+          [norm( 1), "green"]]
+  cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+  corr_df = dataframe.loc[start_datetime:end_datetime].corr(method='pearson')
+  plt.figure(figsize=(40, 20))
+  seaborn.heatmap(corr_df, annot=True, cmap=cmap)
+  plt.figure()
+
+  return corr_df
+
+# datetime format '2024-02-15 09:30:00'
+def get_correlated_stocks(stocks_prices, tickers, start_datetime, end_datetime):
+  corr_df = stocks_prices.loc[start_datetime:end_datetime].corr(method='pearson')
+  corr_true_or_false = corr_df.abs().ge(0.92)
+  corr_dict = {}
+
+  for ticker in tickers:
+    df = corr_true_or_false.loc[corr_true_or_false[ticker]==True]
+    x = list(df.index)
+    x.remove(ticker)
+    corr_dict[ticker] = x
+
+    if len(corr_dict[ticker]) == 0:
+      del corr_dict[ticker]
+  return corr_dict, list(corr_dict.keys())
+
