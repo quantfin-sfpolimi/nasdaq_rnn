@@ -7,6 +7,8 @@ import pickle
 import yfinance as yf
 from openbb import obb
 from matplotlib import pyplot as plt
+import seaborn
+import matplotlib.colors
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Dropout
@@ -17,6 +19,7 @@ import re
 history = History()  # Ignore, it helps with model_data function
 
 # file saving with pickling
+
 
 def pickle_dump(obj, filename):
     """
@@ -39,7 +42,6 @@ def pickle_dump(obj, filename):
     file_path = "./pickle_files/" + filename
     with open(file_path, "wb") as f:
         pickle.dump(obj, f)
-
 
 
 def pickle_load(filename):
@@ -99,8 +101,9 @@ def load_dataframe(years, filename, link, interval):
         stock_prices = loaded_df(
             years=years, tickers=tickers, interval=interval)
 
-    return stock_prices, tickersdef 
-    
+    return stock_prices, tickers
+
+
 def get_stockex_tickers(link):
     """
     Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
@@ -117,7 +120,6 @@ def get_stockex_tickers(link):
             axis=1, inplace=True)
     tickers = df['Ticker'].values.tolist()
     return tickers
-
 
 
 def loaded_df(years, tickers, interval):
@@ -192,7 +194,7 @@ def clean_df(percentage, tickers, stocks_prices):
             if count_nan > (len(stocks_prices) * percentage):
                 stocks_prices.drop(ticker, axis=1, inplace=True)
 
-    stocks_prices.ffill(axis=1, inplace = True)
+    stocks_prices.ffill(axis=1, inplace=True)
     pickle_dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
     return stocks_prices
 
@@ -252,3 +254,49 @@ def lstm_model(xtrain, ytrain):
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
     model.add
+
+# correlation study
+
+
+def plot_corr_matrix(dataframe):
+
+    norm = matplotlib.colors.Normalize(-1, 1)
+    colors = [[norm(-1), "red"],
+              [norm(-0.93), "lightgrey"],
+              [norm(0.93), "lightgrey"],
+              [norm(1), "green"]]
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+    plt.figure(figsize=(40, 20))
+    seaborn.heatmap(dataframe, annot=True, cmap=cmap)
+    plt.show()
+    return dataframe
+
+
+# datetime format '2024-02-15 09:30:00'
+def get_correlated_stocks(stocks_prices, tickers, start_datetime, end_datetime):
+    corr_df = stocks_prices.loc[start_datetime:end_datetime].corr(
+        method='pearson')
+    corr_true_or_false = corr_df.abs().ge(0.92)
+    corr_dict = {}
+
+    for ticker in tickers:
+        df = corr_true_or_false.loc[corr_true_or_false[ticker] == True]
+        x = list(df.index)
+        x.remove(ticker)
+        corr_dict[ticker] = x
+
+        if len(corr_dict[ticker]) == 0:
+            del corr_dict[ticker]
+            
+        
+    return corr_dict, list(corr_dict.keys())
+
+def corr_df(corr_stocks_dict, corr_stocks_list, tickers, stocks_prices):
+    corr_stocks_df = pd.DataFrame()
+
+    for ticker in tickers:
+        if ticker in corr_stocks_list:
+            corr_stocks_df[ticker] = stocks_prices[ticker]
+            
+    pickle_dump(corr_stocks_df, 'correlatedstocks')
+    return corr_stocks_df
