@@ -99,7 +99,9 @@ def load_dataframe(years, filename, link, interval):
         stock_prices = loaded_df(
             years=years, tickers=tickers, interval=interval)
 
-    return stock_prices, tickersdef get_stockex_tickers(link):
+    return stock_prices, tickersdef 
+    
+def get_stockex_tickers(link):
     """
     Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
 
