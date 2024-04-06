@@ -1,4 +1,4 @@
-# Libraries used 
+# Libraries used
 import datetime as dt
 import numpy as np
 import os
@@ -16,6 +16,7 @@ import re
 
 history = History()  # Ignore, it helps with model_data function
 
+# file saving with pickling
 
 def pickle_dump(obj, filename):
     """
@@ -38,6 +39,7 @@ def pickle_dump(obj, filename):
     file_path = "./pickle_files/" + filename
     with open(file_path, "wb") as f:
         pickle.dump(obj, f)
+
 
 
 def pickle_load(filename):
@@ -66,7 +68,8 @@ def pickle_load(filename):
         print("This file " + file_path + " does not exists")
         return None
 
-def load_dataframe(years, filename):
+
+def load_dataframe(years, filename, link, interval):
     """
     Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
 
@@ -92,29 +95,11 @@ def load_dataframe(years, filename):
         stock_prices = pickle_load(filename)
         tickers = stock_prices.columns.tolist()
     else:
-        tickers = get_stockex_tickers()
-        stock_prices = loaded_df(years=years, tickers=tickers)
+        tickers = get_stockex_tickers(link=link)
+        stock_prices = loaded_df(
+            years=years, tickers=tickers, interval=interval)
 
-    return stock_prices, tickers
-
-
-def hashing_and_splitting(adj_close_df):
-    """
-    Splits the given DataFrame of adjusted close prices into training and testing sets based on checksum hashing.
-
-    Parameters:
-        adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
-
-    Returns:
-        Tuple[pandas.DataFrame, pandas.DataFrame]: A tuple containing the training and testing DataFrames.
-    """
-    checksum = np.array([crc32(v) for v in adj_close_df.index.values])
-    test_ratio = 0.2
-    test_indices = checksum < test_ratio * 2 ** 32
-    return adj_close_df[~test_indices], adj_close_df[test_indices]
-
-
-def get_stockex_tickers(link):
+    return stock_prices, tickersdef get_stockex_tickers(link):
     """
     Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
 
@@ -126,9 +111,11 @@ def get_stockex_tickers(link):
     """
     tables = pd.read_html(link)
     df = tables[4]
-    df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'], axis=1, inplace=True)
+    df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'],
+            axis=1, inplace=True)
     tickers = df['Ticker'].values.tolist()
     return tickers
+
 
 
 def loaded_df(years, tickers, interval):
@@ -150,35 +137,64 @@ def loaded_df(years, tickers, interval):
     end_date = dt.date.today()
     for i, ticker in enumerate(tickers):
         print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
-        prices = obb.equity.price.historical(ticker ,start_date = start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
+        prices = obb.equity.price.historical(
+            ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
         stocks_dict[ticker] = prices['close']
 
     stocks_prices = pd.DataFrame.from_dict(stocks_dict)
-    pickle_dump(stocks_prices=stocks_prices)
     return stocks_prices
+
+# cleaning dataframe
+
+
+def hashing_and_splitting(adj_close_df):
+    """
+    Splits the given DataFrame of adjusted close prices into training and testing sets based on checksum hashing.
+
+    Parameters:
+        adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
+
+    Returns:
+        Tuple[pandas.DataFrame, pandas.DataFrame]: A tuple containing the training and testing DataFrames.
+    """
+    checksum = np.array([crc32(v) for v in adj_close_df.index.values])
+    test_ratio = 0.2
+    test_indices = checksum < test_ratio * 2 ** 32
+    return adj_close_df[~test_indices], adj_close_df[test_indices]
 
 
 def clean_df(percentage, tickers, stocks_prices):
     """
     Cleans the DataFrame by dropping stocks with NaN values exceeding the given percentage threshold.
+    The cleaned DataFrame is pickled after the operation.
 
     Parameters:
-        percentage (float): Percentage threshold for NaN values.
-        tickers (List[str]): List of ticker symbols.
-        stocks_prices (pandas.DataFrame): DataFrame containing stock prices.
+    percentage : float
+        Percentage threshold for NaN values. If greater than 1, it's interpreted as a percentage (e.g., 5 for 5%).
+    tickers : List[str]
+        List of ticker symbols.
+    stocks_prices : pandas.DataFrame
+        DataFrame containing stock prices.
 
     Returns:
-        pandas.DataFrame: Cleaned DataFrame.
+    pandas.DataFrame
+        Cleaned DataFrame with NaN values exceeding the threshold removed.
     """
     if percentage > 1:
         percentage = percentage / 100
+
     for ticker in tickers:
         nan_values = stocks_prices[ticker].isnull().values.any()
         if nan_values:
             count_nan = stocks_prices[ticker].isnull().sum()
             if count_nan > (len(stocks_prices) * percentage):
                 stocks_prices.drop(ticker, axis=1, inplace=True)
+
+    stocks_prices.ffill(axis=1, inplace = True)
+    pickle_dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
     return stocks_prices
+
+# machine learning algorithms
 
 
 def xtrain_ytrain(adj_close_df):
@@ -229,7 +245,8 @@ def lstm_model(xtrain, ytrain):
         Sequential: Trained LSTM model.
     """
     model = Sequential()
-    model.add(LSTM(units=50, activation='relu', return_sequences=True, input_shape=(xtrain.shape[1], 1)))
+    model.add(LSTM(units=50, activation='relu',
+              return_sequences=True, input_shape=(xtrain.shape[1], 1)))
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
     model.add
