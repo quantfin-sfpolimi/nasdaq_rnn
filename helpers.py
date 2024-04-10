@@ -287,7 +287,6 @@ def get_correlated_stocks(stocks_prices, tickers, start_datetime, end_datetime):
 
         if len(corr_dict[ticker]) == 0:
             del corr_dict[ticker]
-            
         
     return corr_dict, list(corr_dict.keys())
 

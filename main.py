@@ -14,3 +14,5 @@ corr_stocks_dict, corr_stocks_list = get_correlated_stocks(stocks_prices, ticker
 corr_stocks_df = corr_df(corr_stocks_dict, corr_stocks_list, tickers=tickers, stocks_prices=stocks_prices)
 
 plot_corr_matrix(corr_stocks_df)
+
+print(corr_stocks_df.shape)
