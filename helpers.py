@@ -193,7 +193,7 @@ class DataFrameHelper:
                     stocks_prices.drop(ticker, axis=1, inplace=True)
 
         stocks_prices.ffill(axis=1, inplace=True)
-        PickleHelper.dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
+        PickleHelper.pickle_dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
         return stocks_prices
 
 class MachineLearningHelper:
