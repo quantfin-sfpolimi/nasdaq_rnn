@@ -18,285 +18,281 @@ import re
 
 history = History()  # Ignore, it helps with model_data function
 
-# file saving with pickling
+class PickleHelper:
+    @staticmethod
+    def pickle_dump(obj, filename):
+        """
+        Serialize the given object and save it to a file using pickle.
+
+        Parameters:
+        obj:
+            anything, dataset or ML model
+        filename: str
+            The name of the file to which the object will be saved. If the filename
+            does not end with ".pkl", it will be appended automatically.
+
+        Returns:
+        None
+        """
+        if not re.search("^.*\.pkl$", filename):
+            filename += ".pkl"
+
+        file_path = "./pickle_files/" + filename
+        with open(file_path, "wb") as f:
+            pickle.dump(obj, f)
+
+    @staticmethod
+    def pickle_load(filename):
+        """
+        Load a serialized object from a file using pickle.
+
+        Parameters:
+        filename: str
+            The name of the file from which the object will be loaded. If the filename
+            does not end with ".pkl", it will be appended automatically.
+
+        Returns:
+        obj: any Python object
+            The deserialized object loaded from the file.
+        """
+        if not re.search("^.*\.pkl$", filename):
+            filename += ".pkl"
+
+        file_path = "./pickle_files/" + filename
+
+        try:
+            with open(file_path, "rb") as f:
+                obj = pickle.load(f)
+            return obj
+        except FileNotFoundError:
+            print("This file " + file_path + " does not exists")
+            return None
+
+    @staticmethod
+    def hashing_and_splitting(adj_close_df):
+        """
+        Splits the given DataFrame of adjusted close prices into training and testing sets based on checksum hashing.
+
+        Parameters:
+            adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
+
+        Returns:
+            Tuple[pandas.DataFrame, pandas.DataFrame]: A tuple containing the training and testing DataFrames.
+        """
+        checksum = np.array([crc32(v) for v in adj_close_df.index.values])
+        test_ratio = 0.2
+        test_indices = checksum < test_ratio * 2 ** 32
+        return adj_close_df[~test_indices], adj_close_df[test_indices]
+
+class DataFrameHelper:
+    @staticmethod
+    def load_dataframe(years, filename, link, interval):
+        """
+        Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
+
+        Parameters:
+        years: list
+            A list of years for which the stock prices are required.
+        filename: str
+            The name of the file containing the serialized DataFrame. If the filename
+            does not end with ".pkl", it will be appended automatically.
+
+        Returns:
+        stock_prices: DataFrame
+            A DataFrame containing stock prices for the given years.
+        tickers: list
+            A list of tickers representing the stocks in the DataFrame.
+        """
+        if not re.search("^.*\.pkl$", filename):
+            filename += ".pkl"
+
+        file_path = "./pickle_files/" + filename
+
+        if os.path.isfile(file_path):
+            stock_prices = PickleHelper.load(filename)
+            tickers = stock_prices.columns.tolist()
+        else:
+            tickers = DataFrameHelper.get_stockex_tickers(link=link)
+            stock_prices = DataFrameHelper.loaded_df(
+                years=years, tickers=tickers, interval=interval)
+
+        return stock_prices, tickers
+
+    @staticmethod
+    def get_stockex_tickers(link):
+        """
+        Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
+
+        Parameters:
+            link (str): Link to the Wikipedia page containing stock exchange information.
+
+        Returns:
+            List[str]: List of ticker symbols.
+        """
+        tables = pd.read_html(link)
+        df = tables[4]
+        df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'],
+                axis=1, inplace=True)
+        tickers = df['Ticker'].values.tolist()
+        return tickers
+
+    @staticmethod
+    def loaded_df(years, tickers, interval):
+        """
+        Downloads stock price data for the specified number of years and tickers using yfinance.
+        Returns a pandas DataFrame and pickles the data.
+
+        Parameters:
+            years (int): Number of years of historical data to load.
+            tickers (List[str]): List of ticker symbols.
+            interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
+
+        Returns:
+            pandas.DataFrame: DataFrame containing downloaded stock price data.
+        """
+        stocks_dict = {}
+        time_window = 365 * years
+        start_date = dt.date.today() - dt.timedelta(time_window)
+        end_date = dt.date.today()
+        for i, ticker in enumerate(tickers):
+            print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
+            prices = obb.equity.price.historical(
+                ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
+            stocks_dict[ticker] = prices['close']
+
+        stocks_prices = pd.DataFrame.from_dict(stocks_dict)
+        return stocks_prices
 
 
-def pickle_dump(obj, filename):
-    """
-    Serialize the given object and save it to a file using pickle.
+    @staticmethod
+    def clean_df(percentage, tickers, stocks_prices):
+        """
+        Cleans the DataFrame by dropping stocks with NaN values exceeding the given percentage threshold.
+        The cleaned DataFrame is pickled after the operation.
 
-    Parameters:
-    obj:
-        anything, dataset or ML model
-    filename: str
-        The name of the file to which the object will be saved. If the filename
-        does not end with ".pkl", it will be appended automatically.
+        Parameters:
+        percentage : float
+            Percentage threshold for NaN values. If greater than 1, it's interpreted as a percentage (e.g., 5 for 5%).
+        tickers : List[str]
+            List of ticker symbols.
+        stocks_prices : pandas.DataFrame
+            DataFrame containing stock prices.
 
-    Returns:
-    None
-    """
-    # Check if filename ends with ".pkl", if not add it
-    if not re.search("^.*\.pkl$", filename):
-        filename += ".pkl"
+        Returns:
+        pandas.DataFrame
+            Cleaned DataFrame with NaN values exceeding the threshold removed.
+        """
+        if percentage > 1:
+            percentage = percentage / 100
 
-    file_path = "./pickle_files/" + filename
-    with open(file_path, "wb") as f:
-        pickle.dump(obj, f)
+        for ticker in tickers:
+            nan_values = stocks_prices[ticker].isnull().values.any()
+            if nan_values:
+                count_nan = stocks_prices[ticker].isnull().sum()
+                if count_nan > (len(stocks_prices) * percentage):
+                    stocks_prices.drop(ticker, axis=1, inplace=True)
 
+        stocks_prices.ffill(axis=1, inplace=True)
+        PickleHelper.dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
+        return stocks_prices
 
-def pickle_load(filename):
-    """
-    Load a serialized object from a file using pickle.
+class MachineLearningHelper:
+    @staticmethod
+    def xtrain_ytrain(adj_close_df):
+        """
+        Splits the DataFrame into training and testing sets, normalizes the data, and prepares it for LSTM model training.
 
-    Parameters:
-    filename: str
-        The name of the file from which the object will be loaded. If the filename
-        does not end with ".pkl", it will be appended automatically.
+        Parameters:
+            adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
 
-    Returns:
-    obj: any Python object
-        The deserialized object loaded from the file.
-    """
-    if not re.search("^.*\.pkl$", filename):
-        filename += ".pkl"
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, MinMaxScaler]: A tuple containing training and testing data along with the scaler.
+        """
+        split_index = int((len(adj_close_df)) * 0.80)
+        train_set = pd.DataFrame(adj_close_df.iloc[0:split_index])
+        test_set = pd.DataFrame(adj_close_df.iloc[split_index:])
 
-    file_path = "./pickle_files/" + filename
+        sc = MinMaxScaler(feature_range=(0, 1))
+        sc.fit(train_set)
+        training_set_scaled = sc.fit_transform(train_set)
+        test_set_scaled = sc.transform(test_set)
 
-    try:
-        with open(file_path, "rb") as f:
-            obj = pickle.load(f)
-        return obj
-    except FileNotFoundError:
-        print("This file " + file_path + " does not exists")
-        return None
+        xtrain = []
+        ytrain = []
+        for i in range(60, training_set_scaled.shape[0]):
+            xtrain.append(training_set_scaled[i - 60:i, 0])
+            ytrain.append(training_set_scaled[i, 0])
+        xtrain, ytrain = np.array(xtrain), np.array(ytrain)
+        xtrain = np.reshape(xtrain, (xtrain.shape[0], xtrain.shape[1], 1))
 
+        xtest = []
+        ytest = []
+        for i in range(20, test_set_scaled.shape[0]):
+            xtest.append(test_set_scaled[i - 20:i, 0])
+            ytest.append(test_set_scaled[i, 0])
+        xtest, ytest = np.array(xtest), np.array(ytest)
+        return xtrain, ytrain, xtest, ytest, sc
 
-def load_dataframe(years, filename, link, interval):
-    """
-    Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
+    @staticmethod
+    def lstm_model(xtrain, ytrain):
+        """
+        Builds and trains an LSTM model using the training data.
 
-    Parameters:
-    years: list
-        A list of years for which the stock prices are required.
-    filename: str
-        The name of the file containing the serialized DataFrame. If the filename
-        does not end with ".pkl", it will be appended automatically.
+        Parameters:
+            xtrain (np.ndarray): Input training data.
+            ytrain (np.ndarray): Target training data.
 
-    Returns:
-    stock_prices: DataFrame
-        A DataFrame containing stock prices for the given years.
-    tickers: list
-        A list of tickers representing the stocks in the DataFrame.
-    """
-    if not re.search("^.*\.pkl$", filename):
-        filename += ".pkl"
+        Returns:
+            Sequential: Trained LSTM model.
+        """
+        model = Sequential()
+        model.add(LSTM(units=50, activation='relu',
+                  return_sequences=True, input_shape=(xtrain.shape[1], 1)))
+        model.add(Dropout(0.2))
+        model.add(LSTM(units=60, activation='relu', return_sequences=True))
+        model.add
 
-    file_path = "./pickle_files/" + filename
+class CorrelationAnalysis:
+    @staticmethod
+    def plot_corr_matrix(dataframe):
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1), "red"],
+                  [norm(-0.93), "lightgrey"],
+                  [norm(0.93), "lightgrey"],
+                  [norm(1), "green"]]
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+        plt.figure(figsize=(40, 20))
+        seaborn.heatmap(dataframe, annot=True, cmap=cmap)
+        plt.show()
+        return dataframe
 
-    if os.path.isfile(file_path):
-        stock_prices = pickle_load(filename)
-        tickers = stock_prices.columns.tolist()
-    else:
-        tickers = get_stockex_tickers(link=link)
-        stock_prices = loaded_df(
-            years=years, tickers=tickers, interval=interval)
+    # datetime format '2024-02-15 09:30:00'
+    @staticmethod
+    def get_correlated_stocks(stocks_prices, tickers, start_datetime, end_datetime):
+        corr_df = stocks_prices.loc[start_datetime:end_datetime].corr(method='pearson')
+        corr_true_or_false = corr_df.abs().ge(0.92)
+        corr_dict = {}
 
-    return stock_prices, tickers
+        for ticker in tickers:
+            df = corr_true_or_false.loc[corr_true_or_false[ticker] == True]
+            x = list(df.index)
+            x.remove(ticker)
+            corr_dict[ticker] = x
 
-
-def get_stockex_tickers(link):
-    """
-    Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
-
-    Parameters:
-        link (str): Link to the Wikipedia page containing stock exchange information.
-
-    Returns:
-        List[str]: List of ticker symbols.
-    """
-    tables = pd.read_html(link)
-    df = tables[4]
-    df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'],
-            axis=1, inplace=True)
-    tickers = df['Ticker'].values.tolist()
-    return tickers
-
-
-def loaded_df(years, tickers, interval):
-    """
-    Downloads stock price data for the specified number of years and tickers using yfinance.
-    Returns a pandas DataFrame and pickles the data.
-
-    Parameters:
-        years (int): Number of years of historical data to load.
-        tickers (List[str]): List of ticker symbols.
-        interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
-
-    Returns:
-        pandas.DataFrame: DataFrame containing downloaded stock price data.
-    """
-    stocks_dict = {}
-    time_window = 365 * years
-    start_date = dt.date.today() - dt.timedelta(time_window)
-    end_date = dt.date.today()
-    for i, ticker in enumerate(tickers):
-        print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
-        prices = obb.equity.price.historical(
-            ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
-        stocks_dict[ticker] = prices['close']
-
-    stocks_prices = pd.DataFrame.from_dict(stocks_dict)
-    return stocks_prices
-
-# cleaning dataframe
+            if len(corr_dict[ticker]) == 0:
+                del corr_dict[ticker]
 
 
-def hashing_and_splitting(adj_close_df):
-    """
-    Splits the given DataFrame of adjusted close prices into training and testing sets based on checksum hashing.
+        return corr_dict, list(corr_dict.keys())
 
-    Parameters:
-        adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
+    @staticmethod
+    def corr_df(corr_stocks_dict, corr_stocks_list, tickers, stocks_prices):
+        corr_stocks_df = pd.DataFrame()
 
-    Returns:
-        Tuple[pandas.DataFrame, pandas.DataFrame]: A tuple containing the training and testing DataFrames.
-    """
-    checksum = np.array([crc32(v) for v in adj_close_df.index.values])
-    test_ratio = 0.2
-    test_indices = checksum < test_ratio * 2 ** 32
-    return adj_close_df[~test_indices], adj_close_df[test_indices]
+        for ticker in tickers:
+            if ticker in corr_stocks_list:
+                corr_stocks_df[ticker] = stocks_prices[ticker]
 
+        PickleHelper.pickle_dump(corr_stocks_df, 'correlatedstocks')
 
-def clean_df(percentage, tickers, stocks_prices):
-    """
-    Cleans the DataFrame by dropping stocks with NaN values exceeding the given percentage threshold.
-    The cleaned DataFrame is pickled after the operation.
-
-    Parameters:
-    percentage : float
-        Percentage threshold for NaN values. If greater than 1, it's interpreted as a percentage (e.g., 5 for 5%).
-    tickers : List[str]
-        List of ticker symbols.
-    stocks_prices : pandas.DataFrame
-        DataFrame containing stock prices.
-
-    Returns:
-    pandas.DataFrame
-        Cleaned DataFrame with NaN values exceeding the threshold removed.
-    """
-    if percentage > 1:
-        percentage = percentage / 100
-
-    for ticker in tickers:
-        nan_values = stocks_prices[ticker].isnull().values.any()
-        if nan_values:
-            count_nan = stocks_prices[ticker].isnull().sum()
-            if count_nan > (len(stocks_prices) * percentage):
-                stocks_prices.drop(ticker, axis=1, inplace=True)
-
-    stocks_prices.ffill(axis=1, inplace=True)
-    pickle_dump(obj=stocks_prices, filename='cleaned_nasdaq_dataframe')
-    return stocks_prices
-
-# machine learning algorithms
-
-
-def xtrain_ytrain(adj_close_df):
-    """
-    Splits the DataFrame into training and testing sets, normalizes the data, and prepares it for LSTM model training.
-
-    Parameters:
-        adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
-
-    Returns:
-        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, MinMaxScaler]: A tuple containing training and testing data along with the scaler.
-    """
-    split_index = int((len(adj_close_df)) * 0.80)
-    train_set = pd.DataFrame(adj_close_df.iloc[0:split_index])
-    test_set = pd.DataFrame(adj_close_df.iloc[split_index:])
-
-    sc = MinMaxScaler(feature_range=(0, 1))
-    sc.fit(train_set)
-    training_set_scaled = sc.fit_transform(train_set)
-    test_set_scaled = sc.transform(test_set)
-
-    xtrain = []
-    ytrain = []
-    for i in range(60, training_set_scaled.shape[0]):
-        xtrain.append(training_set_scaled[i - 60:i, 0])
-        ytrain.append(training_set_scaled[i, 0])
-    xtrain, ytrain = np.array(xtrain), np.array(ytrain)
-    xtrain = np.reshape(xtrain, (xtrain.shape[0], xtrain.shape[1], 1))
-
-    xtest = []
-    ytest = []
-    for i in range(20, test_set_scaled.shape[0]):
-        xtest.append(test_set_scaled[i - 20:i, 0])
-        ytest.append(test_set_scaled[i, 0])
-    xtest, ytest = np.array(xtest), np.array(ytest)
-    return xtrain, ytrain, xtest, ytest, sc
-
-
-def lstm_model(xtrain, ytrain):
-    """
-    Builds and trains an LSTM model using the training data.
-
-    Parameters:
-        xtrain (np.ndarray): Input training data.
-        ytrain (np.ndarray): Target training data.
-
-    Returns:
-        Sequential: Trained LSTM model.
-    """
-    model = Sequential()
-    model.add(LSTM(units=50, activation='relu',
-              return_sequences=True, input_shape=(xtrain.shape[1], 1)))
-    model.add(Dropout(0.2))
-    model.add(LSTM(units=60, activation='relu', return_sequences=True))
-    model.add
-
-# correlation study
-
-
-def plot_corr_matrix(dataframe):
-
-    norm = matplotlib.colors.Normalize(-1, 1)
-    colors = [[norm(-1), "red"],
-              [norm(-0.93), "lightgrey"],
-              [norm(0.93), "lightgrey"],
-              [norm(1), "green"]]
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
-    plt.figure(figsize=(40, 20))
-    seaborn.heatmap(dataframe, annot=True, cmap=cmap)
-    plt.show()
-    return dataframe
-
-
-# datetime format '2024-02-15 09:30:00'
-def get_correlated_stocks(stocks_prices, tickers, start_datetime, end_datetime):
-    corr_df = stocks_prices.loc[start_datetime:end_datetime].corr(
-        method='pearson')
-    corr_true_or_false = corr_df.abs().ge(0.92)
-    corr_dict = {}
-
-    for ticker in tickers:
-        df = corr_true_or_false.loc[corr_true_or_false[ticker] == True]
-        x = list(df.index)
-        x.remove(ticker)
-        corr_dict[ticker] = x
-
-        if len(corr_dict[ticker]) == 0:
-            del corr_dict[ticker]
-            
-        
-    return corr_dict, list(corr_dict.keys())
-
-def corr_df(corr_stocks_dict, corr_stocks_list, tickers, stocks_prices):
-    corr_stocks_df = pd.DataFrame()
-
-    for ticker in tickers:
-        if ticker in corr_stocks_list:
-            corr_stocks_df[ticker] = stocks_prices[ticker]
-            
-    pickle_dump(corr_stocks_df, 'correlatedstocks')
-    return corr_stocks_df
+        return corr_stocks_df
