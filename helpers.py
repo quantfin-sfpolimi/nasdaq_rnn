@@ -109,7 +109,7 @@ class DataFrameHelper:
         file_path = "./pickle_files/" + filename
 
         if os.path.isfile(file_path):
-            stock_prices = PickleHelper.load(filename)
+            stock_prices = PickleHelper.pickle_load(filename)
             tickers = stock_prices.columns.tolist()
         else:
             tickers = DataFrameHelper.get_stockex_tickers(link=link)
