@@ -104,6 +104,8 @@ class DataFrameHelper:
 
         Returns: None
         """
+        obb.account.login(email='simo05062003@gmail.com', password='##2yTFb2F4Zd9z')
+
         if not re.search("^.*\.pkl$", self.filename):
             self.filename += ".pkl"
 
