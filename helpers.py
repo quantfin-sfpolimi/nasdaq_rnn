@@ -72,20 +72,20 @@ class PickleHelper:
             print("This file " + file_path + " does not exists")
             return None
 
-def hashing_and_splitting(adj_close_stocks_prices):
+def hashing_and_splitting(adj_close_stocks_dataframe):
     """
-    Splits the given DataFrame of adjusted close prices into training and testing sets based on checksum hashing.
+    Splits the given DataFrame of adjusted close dataframe into training and testing sets based on checksum hashing.
 
     Parameters:
-        adj_close_stocks_prices (pandas.DataFrame): DataFrame containing adjusted close prices.
+        adj_close_stocks_dataframe (pandas.DataFrame): DataFrame containing adjusted close dataframe.
 
     Returns:
         Tuple[pandas.DataFrame, pandas.DataFrame]: A tuple containing the training and testing DataFrames.
     """
-    checksum = np.array([crc32(v) for v in adj_close_stocks_prices.index.values])
+    checksum = np.array([crc32(v) for v in adj_close_stocks_dataframe.index.values])
     test_ratio = 0.2
     test_indices = checksum < test_ratio * 2 ** 32
-    return adj_close_stocks_prices[~test_indices], adj_close_stocks_prices[test_indices]
+    return adj_close_stocks_dataframe[~test_indices], adj_close_stocks_dataframe[test_indices]
 
 class DataFrameHelper:
     def __init__(self, filename, link, years, interval):
@@ -93,13 +93,13 @@ class DataFrameHelper:
         self.link = link
         self.years = years
         self.interval = interval
-        self.prices = []
+        self.dataframe = []
         self.tickers = []
 
-    # NOTA: FUNZIONE LOAD MODIFICATA, non ritorna piu nulla ma aggiorna direttamente self.prices e self.tickers
+    #NOTE: FUNZIONE LOAD MODIFICATA, non ritorna piu nulla ma aggiorna direttamente self.dataframe e self.tickers
     def load(self):
         """
-        Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
+        Load a DataFrame of stock dataframe from a pickle file if it exists, otherwise create a new DataFrame.
 
         Parameters: Obj
             self
@@ -112,11 +112,11 @@ class DataFrameHelper:
         file_path = "./pickle_files/" + self.filename
 
         if os.path.isfile(file_path):
-            self.prices = PickleHelper.pickle_load(self.filename).obj
-            self.tickers = self.prices.columns.tolist()
+            self.dataframe = PickleHelper.pickle_load(self.filename).obj
+            self.tickers = self.dataframe.columns.tolist()
         else:
             self.tickers = self.get_stockex_tickers()
-            self.prices = self.loaded_df()
+            self.dataframe = self.loaded_df()
 
         return None
 
@@ -156,12 +156,12 @@ class DataFrameHelper:
         end_date = dt.date.today()
         for i, ticker in enumerate(self.tickers):
             print('Getting {} ({}/{})'.format(ticker, i, len(self.tickers)))
-            prices = obb.equity.price.historical(
+            dataframe = obb.equity.price.historical(
                 ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=self.interval).to_df()
-            stocks_dict[ticker] = prices['close']
+            stocks_dict[ticker] = dataframe['close']
 
-        stocks_prices = pd.DataFrame.from_dict(stocks_dict)
-        return stocks_prices
+        stocks_dataframe = pd.DataFrame.from_dict(stocks_dict)
+        return stocks_dataframe
 
     def clean_df(self, percentage):
         """
@@ -180,29 +180,28 @@ class DataFrameHelper:
             percentage = percentage / 100
 
         for ticker in self.tickers:
-            nan_values = self.prices[ticker].isnull().values.any()
+            nan_values = self.dataframe[ticker].isnull().values.any()
             if nan_values:
-                count_nan = self.prices[ticker].isnull().sum()
-                if count_nan > (len(self.prices) * percentage):
-                    self.prices.drop(ticker, axis=1, inplace=True)
+                count_nan = self.dataframe[ticker].isnull().sum()
+                if count_nan > (len(self.dataframe) * percentage):
+                    self.dataframe.drop(ticker, axis=1, inplace=True)
 
-        self.prices.ffill(axis=1, inplace=True) 
-        PickleHelper(obj=self.prices).pickle_dump(filename='cleaned_nasdaq_dataframe')
-        return None
+        self.dataframe.ffill(axis=1, inplace=True) 
+        PickleHelper(obj=self.dataframe).pickle_dump(filename='cleaned_nasdaq_dataframe')
 
-def xtrain_ytrain(adj_close_stocks_prices):
+def xtrain_ytrain(adj_close_stocks_dataframe):
     """
     Splits the DataFrame into training and testing sets, normalizes the data, and prepares it for LSTM model training.
 
     Parameters:
-        adj_close_stocks_prices (pandas.DataFrame): DataFrame containing adjusted close prices.
+        adj_close_stocks_dataframe (pandas.DataFrame): DataFrame containing adjusted close dataframe.
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, MinMaxScaler]: A tuple containing training and testing data along with the scaler.
     """
-    split_index = int((len(adj_close_stocks_prices)) * 0.80)
-    train_set = pd.DataFrame(adj_close_stocks_prices.iloc[0:split_index])
-    test_set = pd.DataFrame(adj_close_stocks_prices.iloc[split_index:])
+    split_index = int((len(adj_close_stocks_dataframe)) * 0.80)
+    train_set = pd.DataFrame(adj_close_stocks_dataframe.iloc[0:split_index])
+    test_set = pd.DataFrame(adj_close_stocks_dataframe.iloc[split_index:])
 
     sc = MinMaxScaler(feature_range=(0, 1))
     sc.fit(train_set)
@@ -241,94 +240,97 @@ def lstm_model(xtrain, ytrain):
                   return_sequences=True, input_shape=(xtrain.shape[1], 1)))
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
-    model.add
+    model.add #FIXME: something weird happened here
 
-# correlation study
-
-
-def plot_corr_matrix(dataframe):
+class CorrelationAnalysis:
     """
-    Plot the correlation matrix heatmap for a given DataFrame.
-
-    Parameters:
-    dataframe (pandas.DataFrame): The DataFrame containing the correlation matrix to be visualized.
-
-    Returns:
-    None
-    """
-    norm = matplotlib.colors.Normalize(-1, 1)
-    colors = [[norm(-1), "red"],
-              [norm(-0.93), "lightgrey"],
-              [norm(0.93), "lightgrey"],
-              [norm(1), "green"]]
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
-    plt.figure(figsize=(40, 20))
-    seaborn.heatmap(dataframe, annot=True, cmap=cmap)
-    plt.show()
-
-
-def get_correlated_stocks(stocks_prices, tickers):
-    """
-    Get correlated stocks based on the correlation matrix of their prices within a given time period.
-
-    Parameters:
-    stocks_prices (pandas.DataFrame): DataFrame containing the prices of different stocks.
-    tickers (list): List of ticker tickers representing the stocks.
-    start_datetime (str): Start date and time in 'YYYY-MM-DD HH:MM:SS' format.
-    end_datetime (str): End date and time in 'YYYY-MM-DD HH:MM:SS' format.
-
-    Returns:
-    Tuple[np.ndarray, np.ndarray]: A tuple containing a numpy array of correlation coefficients
-                                    and a numpy array of p-values.
-    """
-    # Make array that will store the ticker pairs, and their p-value
-    corr_values = np.zeros([len(tickers), len(tickers)])
-    pvalue_array = np.zeros([len(tickers), len(tickers)])
-    for i in range(len(tickers)):
-        for j in range(len(tickers)):
-            # Loop on matrix, get pair (i,j)
-            vals_i = stocks_prices[tickers[i]].values
-            vals_j = stocks_prices[tickers[j]].values
-            # Get correlation coef and corresponding p-value of each pair
-            r_ij, p_ij = ss.stats.pearsonr(vals_i, vals_j)
-            corr_values[i, j] = r_ij
-            pvalue_array[i, j] = p_ij
-    pickle_dump(corr_values, 'correlationvalues_array')
-    pickle_dump(pvalue_array, 'pvalues_array')
+    A class for performing correlation analysis on stock data.
     
-    return corr_values, pvalue_array
-
-def corr_stocks_pair(corr_values, pvalue_array, tickers):
+    Attributes:
+        dataframe (pandas.DataFrame): The DataFrame containing the stock data.
+        tickers (list): List of ticker symbols representing the stocks.
+        start_datetime (str): Start date and time of the data in 'YYYY-MM-DD HH:MM:SS' format.
+        end_datetime (str): End date and time of the data in 'YYYY-MM-DD HH:MM:SS' format.
+        corrvalues (np.ndarray): Array containing correlation coefficients.
+        pvalues (np.ndarray): Array containing p-values.
+        winner (list): A list containing ticker symbols corresponding to the pair with the maximum correlation coefficient.
     """
-    Create a DataFrame containing prices of correlated stocks and save it to a pickle file.
 
-    Parameters:
-    corr_values (np.ndarray): Array containing correlation coefficients.
-    pvalue_array (np.ndarray): Array containing p-values.
-    tickers (list): List of all ticker tickers in the dataset.
+    def __init__(self, dataframe, tickers, start_datetime, end_datetime):
+        """
+        Initialize the CorrelationAnalysis object.
+        
+        Args:
+            dataframe (pandas.DataFrame): The DataFrame containing the stock data.
+            tickers (list): List of ticker symbols representing the stocks.
+            start_datetime (str): Start date and time of the data in 'YYYY-MM-DD HH:MM:SS' format.
+            end_datetime (str): End date and time of the data in 'YYYY-MM-DD HH:MM:SS' format.
+        """
+        self.dataframe = dataframe
+        self.tickers = tickers 
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
+        self.corrvalues = None
+        self.pvalues = None
+        self.winner = None
 
-    Returns:
-    list: A list containing tickers corresponding to the pair with the maximum correlation coefficient.
-    """
-    #filter based on test significance
-    corr_values_filtered = np.where(pvalue_array > 0.05, corr_values, np.nan)
-    # Get min and max correlation values
-    min_corr = np.nanmin(corr_values_filtered)
-    tmp_arr = corr_values_filtered.copy()
-    # Make diagonal 0 (correlation with itself is 1, make 0)
-    for i in range(len(tmp_arr)):
-        tmp_arr[i, i] = 0
-    # Calculate max correlation
-    max_corr = np.nanmax(tmp_arr)
-    # Get pair that has the max correlation value
-    max_indexes = np.where(corr_values == max_corr)
-    # Store pair as a tuple
-    max_pair = [tickers[max_indexes[0][0]], tickers[max_indexes[0][1]]]
+    def get_correlated_stocks(self):
+        """
+        Calculate correlation coefficients and p-values for the given stocks within a given time period.
+        
+        Returns:
+            None
+        """
+        corr_values = np.zeros([len(self.tickers), len(self.tickers)])
+        pvalue_array = np.zeros([len(self.tickers), len(self.tickers)])
+        for i in range(len(self.tickers)):
+            for j in range(len(self.tickers)):
+                vals_i = self.dataframe[self.tickers[i]].values
+                vals_j = self.dataframe[self.tickers[j]].values
+                r_ij, p_ij = ss.stats.pearsonr(vals_i, vals_j)
+                corr_values[i, j] = r_ij
+                pvalue_array[i, j] = p_ij
+                
+        self.corrvalues = corr_values
+        self.pvalues = pvalue_array
+        PickleHelper(self.corrvalues).pickle_dump('correlationvalues_array')
+        PickleHelper(self.pvalues).pickle_dump('pvalues_array')
 
-    corr_order = np.argsort(tmp_arr.flatten())
-    corr_num = corr_order[-1]
-    max_pair = [tickers[corr_num // len(tickers)], tickers[corr_num % len(tickers)]]
-    
-    pickle_dump(max_pair, 'df_maxcorr_pair')
-    
-    return max_pair
+    def plot_corr_matrix(self):
+        """
+        Plot the correlation matrix heatmap for the given DataFrame.
+        
+        Returns:
+            None
+        """
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1), "red"],
+                  [norm(-0.93), "lightgrey"],
+                  [norm(0.93), "lightgrey"],
+                  [norm(1), "green"]]
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+        plt.figure(figsize=(40, 20))
+        seaborn.heatmap(pd.DataFrame(self.corrvalues, columns=self.tickers, index=self.tickers), annot=True, cmap=cmap)
+        plt.show()
+
+    def corr_stocks_pair(self):
+        """
+        Identify the pair of stocks with the maximum correlation coefficient and save it to a pickle file.
+        
+        Returns:
+            None
+        """
+        corr_values_filtered = np.where(self.pvalues > 0.05, self.corrvalues, np.nan)
+        min_corr = np.nanmin(corr_values_filtered)
+        tmp_arr = corr_values_filtered.copy()
+        for i in range(len(tmp_arr)):
+            tmp_arr[i, i] = 0
+        max_corr = np.nanmax(tmp_arr)
+        max_indexes = np.where(self.corrvalues == max_corr)
+        max_pair = [self.tickers[max_indexes[0][0]], self.tickers[max_indexes[0][1]]]
+
+        corr_order = np.argsort(tmp_arr.flatten())
+        corr_num = corr_order[-1]
+        max_pair = [self.tickers[corr_num // len(self.tickers)], self.tickers[corr_num % len(self.tickers)]]
+        self.winner = max_pair
+        PickleHelper(self.winner).pickle_dump('df_maxcorr_pair')
