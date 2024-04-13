@@ -1,11 +1,7 @@
-from openbb import obb
-import pandas as pd
+
 from helpers import DataFrameHelper, CorrelationAnalysis
 
 df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100', years=10, interval='5m')
-
-# simo's login with obb platform credetial
-obb.account.login(email='simo05062003@gmail.com', password='##2yTFb2F4Zd9z')
 
 #load data, clean data frame (closing stock prices)
 df_nasdaq.load()
