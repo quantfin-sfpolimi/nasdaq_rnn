@@ -18,15 +18,13 @@ import re
 
 history = History()  # Ignore, it helps with model_data function
 
-# file saving with pickling
+class PickleHelper:
+    def __init__(self, obj):
+        self.obj = obj
 
-<<<<<<<<< Temporary merge branch 1
-=========
-
->>>>>>>>> Temporary merge branch 2
-def pickle_dump(obj, filename):
-    """
-    Serialize the given object and save it to a file using pickle.
+    def pickle_dump(self, filename):
+        """
+        Serialize the given object and save it to a file using pickle.
 
         Parameters:
         obj:
@@ -55,146 +53,22 @@ def pickle_dump(obj, filename):
             The name of the file from which the object will be loaded. If the filename
             does not end with ".pkl", it will be appended automatically.
 
-    Returns:
-    obj: any Python object
-        The deserialized object loaded from the file.
-    """
-    if not re.search("^.*\.pkl$", filename):
-        filename += ".pkl"
-<<<<<<<<< Temporary merge branch 1
-=========
+        Returns:
+        obj: PickleHelper
+            A PickleHelper object with the obj loaded from the file accessible through its .obj attribute 
+        """
+        if not re.search("^.*\.pkl$", filename):
+            filename += ".pkl"
 
         file_path = "./pickle_files/" + filename
 
-    try:
-        with open(file_path, "rb") as f:
-            obj = pickle.load(f)
-        return obj
-    except FileNotFoundError:
-        print("This file " + file_path + " does not exists")
-        return None
->>>>>>>>> Temporary merge branch 2
-
-    file_path = "./pickle_files/" + filename
-
-<<<<<<<<< Temporary merge branch 1
-    try:
-        with open(file_path, "rb") as f:
-            obj = pickle.load(f)
-        return obj
-    except FileNotFoundError:
-        print("This file " + file_path + " does not exists")
-        return None
-
-def load_dataframe(years, filename):
-    """
-    Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
-
-    Parameters:
-    years: list
-        A list of years for which the stock prices are required.
-    filename: str
-        The name of the file containing the serialized DataFrame. If the filename
-        does not end with ".pkl", it will be appended automatically.
-
-    Returns:
-    stock_prices: DataFrame
-        A DataFrame containing stock prices for the given years.
-    tickers: list
-        A list of tickers representing the stocks in the DataFrame.
-    """
-    if not re.search("^.*\.pkl$", filename):
-        filename += ".pkl"
-
-    file_path = "./pickle_files/" + filename
-
-    if os.path.isfile(file_path):
-        stock_prices = pickle_load(filename)
-        tickers = stock_prices.columns.tolist()
-    else:
-        tickers = get_stockex_tickers()
-        stock_prices = loaded_df(years=years, tickers=tickers)
-=========
-def load_dataframe(years, filename, link, interval):
-    """
-    Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
-
-    Parameters:
-    years: list
-        A list of years for which the stock prices are required.
-    filename: str
-        The name of the file containing the serialized DataFrame. If the filename
-        does not end with ".pkl", it will be appended automatically.
-
-    Returns:
-    stock_prices: DataFrame
-        A DataFrame containing stock prices for the given years.
-    tickers: list
-        A list of tickers representing the stocks in the DataFrame.
-    """
-    if not re.search("^.*\.pkl$", filename):
-        filename += ".pkl"
-
-    file_path = "./pickle_files/" + filename
-
-    if os.path.isfile(file_path):
-        stock_prices = pickle_load(filename)
-        tickers = stock_prices.columns.tolist()
-    else:
-        tickers = get_stockex_tickers(link=link)
-        stock_prices = loaded_df(
-            years=years, tickers=tickers, interval=interval)
-
-    return stock_prices, tickers
-
-
-def get_stockex_tickers(link):
-    """
-    Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
-
-    Parameters:
-        link (str): Link to the Wikipedia page containing stock exchange information.
-
-    Returns:
-        List[str]: List of ticker symbols.
-    """
-    tables = pd.read_html(link)
-    df = tables[4]
-    df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'],
-            axis=1, inplace=True)
-    tickers = df['Ticker'].values.tolist()
-    return tickers
-
-
-def loaded_df(years, tickers, interval):
-    """
-    Downloads stock price data for the specified number of years and tickers using yfinance.
-    Returns a pandas DataFrame and pickles the data.
-
-    Parameters:
-        years (int): Number of years of historical data to load.
-        tickers (List[str]): List of ticker symbols.
-        interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
-
-    Returns:
-        pandas.DataFrame: DataFrame containing downloaded stock price data.
-    """
-    stocks_dict = {}
-    time_window = 365 * years
-    start_date = dt.date.today() - dt.timedelta(time_window)
-    end_date = dt.date.today()
-    for i, ticker in enumerate(tickers):
-        print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
-        prices = obb.equity.price.historical(
-            ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
-        stocks_dict[ticker] = prices['close']
->>>>>>>>> Temporary merge branch 2
-
-    stocks_prices = pd.DataFrame.from_dict(stocks_dict)
-    return stocks_prices
-
-# cleaning dataframe
-
+        try:
+            with open(file_path, "rb") as f:
+                pcklHelper = PickleHelper(pickle.load(f))
+            return pcklHelper
+        except FileNotFoundError:
+            print("This file " + file_path + " does not exists")
+            return None
 
 def hashing_and_splitting(adj_close_df):
     """
@@ -211,58 +85,86 @@ def hashing_and_splitting(adj_close_df):
     test_indices = checksum < test_ratio * 2 ** 32
     return adj_close_df[~test_indices], adj_close_df[test_indices]
 
+class DataFrameHelper:
+    def __init__(self, filename, link, years, interval):
+        self.filename = filename
+        self.link = link
+        self.years = years
+        self.interval = interval
+        self.prices = []
+        self.tickers = []
 
-<<<<<<<<< Temporary merge branch 1
-def get_stockex_tickers(link):
-    """
-    Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
+    # NOTA: FUNZIONE LOAD MODIFICATA, non ritorna piu nulla ma aggiorna direttamente self.prices e self.tickers
+    def load(self):
+        """
+        Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
 
-    Parameters:
-        link (str): Link to the Wikipedia page containing stock exchange information.
+        Parameters: Obj
+            self
 
-    Returns:
-        List[str]: List of ticker symbols.
-    """
-    tables = pd.read_html(link)
-    df = tables[4]
-    df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'], axis=1, inplace=True)
-    tickers = df['Ticker'].values.tolist()
-    return tickers
+        Returns: None
+        """
+        if not re.search("^.*\.pkl$", self.filename):
+            self.filename += ".pkl"
 
+        file_path = "./pickle_files/" + self.filename
 
-def loaded_df(years, tickers, interval):
-    """
-    Downloads stock price data for the specified number of years and tickers using yfinance.
-    Returns a pandas DataFrame and pickles the data.
+        if os.path.isfile(file_path):
+            self.prices = PickleHelper.pickle_load(self.filename).obj
+            self.tickers = self.prices.columns.tolist()
+        else:
+            self.tickers = self.get_stockex_tickers()
+            self.prices = self.loaded_df()
 
-    Parameters:
-        years (int): Number of years of historical data to load.
-        tickers (List[str]): List of ticker symbols.
-        interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
+        return None
 
-    Returns:
-        pandas.DataFrame: DataFrame containing downloaded stock price data.
-    """
-    stocks_dict = {}
-    time_window = 365 * years
-    start_date = dt.date.today() - dt.timedelta(time_window)
-    end_date = dt.date.today()
-    for i, ticker in enumerate(tickers):
-        print('Getting {} ({}/{})'.format(ticker, i, len(tickers)))
-        prices = obb.equity.price.historical(ticker ,start_date = start_date, end_date=end_date, provider="yfinance", interval=interval).to_df()
-        stocks_dict[ticker] = prices['close']
+    def get_stockex_tickers(self):
+        """
+        Retrieves ticker symbols from a Wikipedia page containing stock exchange information.
 
-    stocks_prices = pd.DataFrame.from_dict(stocks_dict)
-    pickle_dump(stocks_prices=stocks_prices)
-    return stocks_prices
+        Parameters:
+            self
 
+        Returns:
+            List[str]: List of ticker symbols.
+        """
+        tables = pd.read_html(self.link)
+        df = tables[4]
+        df.drop(['Company', 'GICS Sector', 'GICS Sub-Industry'],
+                axis=1, inplace=True)
+        tickers = df['Ticker'].values.tolist()
+        return tickers
 
-=========
->>>>>>>>> Temporary merge branch 2
-def clean_df(percentage, tickers, stocks_prices):
-    """
-    Cleans the DataFrame by dropping stocks with NaN values exceeding the given percentage threshold.
-    The cleaned DataFrame is pickled after the operation.
+    def loaded_df(self):
+        """
+        Downloads stock price data for the specified number of years and tickers using yfinance.
+        Returns a pandas DataFrame and pickles the data.
+
+        Parameters:
+            years (int): Number of years of historical data to load.
+            tickers (List[str]): List of ticker symbols.
+            interval (str): Time frequency of historical data to load with format: ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1W', '1M' or '1Q').
+
+        Returns:
+            pandas.DataFrame: DataFrame containing downloaded stock price data.
+        """
+        stocks_dict = {}
+        time_window = 365 * self.years
+        start_date = dt.date.today() - dt.timedelta(time_window)
+        end_date = dt.date.today()
+        for i, ticker in enumerate(self.tickers):
+            print('Getting {} ({}/{})'.format(ticker, i, len(self.tickers)))
+            prices = obb.equity.price.historical(
+                ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=self.interval).to_df()
+            stocks_dict[ticker] = prices['close']
+
+        stocks_prices = pd.DataFrame.from_dict(stocks_dict)
+        return stocks_prices
+
+    def clean_df(self, percentage):
+        """
+        Cleans the DataFrame by dropping stocks with NaN values exceeding the given percentage threshold.
+        The cleaned DataFrame is pickled after the operation.
 
         Parameters:
         self
@@ -338,3 +240,52 @@ def lstm_model(xtrain, ytrain):
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
     model.add
+        
+
+class CorrelationAnalysis:
+    def __init__(self, prices, tickers, start_datetime, end_datetime):
+        self.prices = prices
+        self.tickers = tickers 
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
+        self.df = None # use corr_df() output to initialize
+
+    def plot_corr_matrix(self):
+        norm = matplotlib.colors.Normalize(-1, 1)
+        colors = [[norm(-1), "red"],
+                  [norm(-0.93), "lightgrey"],
+                  [norm(0.93), "lightgrey"],
+                  [norm(1), "green"]]
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", colors)
+        plt.figure(figsize=(40, 20))
+        seaborn.heatmap(self.df, annot=True, cmap=cmap)
+        plt.show()
+        
+
+    # datetime format '2024-02-15 09:30:00'
+    def get_correlated_stocks(self):
+        corr_df = self.prices.loc[self.start_datetime:self.end_datetime].corr(method='pearson')
+        corr_true_or_false = corr_df.abs().ge(0.92)
+        corr_dict = {}
+
+        for ticker in self.tickers:
+            df = corr_true_or_false.loc[corr_true_or_false[ticker] == True]
+            x = list(df.index)
+            x.remove(ticker)
+            corr_dict[ticker] = x
+
+            if len(corr_dict[ticker]) == 0:
+                del corr_dict[ticker]
+
+        return corr_dict, list(corr_dict.keys())
+
+    def corr_df(self, corr_stocks_dict, corr_stocks_list):
+        corr_stocks_df = pd.DataFrame()
+
+        for ticker in self.tickers:
+            if ticker in corr_stocks_list:
+                corr_stocks_df[ticker] = self.prices[ticker]
+
+        PickleHelper(obj=corr_stocks_df).pickle_dump(filename='correlatedstocks')
+
+        return corr_stocks_df
