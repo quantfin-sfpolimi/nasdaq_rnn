@@ -340,3 +340,7 @@ class CorrelationAnalysis:
         self.winner = max_pair
         print(max_pair)
         PickleHelper(self.winner).pickle_dump('df_maxcorr_pair')
+        plt.figure(figsize=(40,20))
+        plt.plot(self.dataframe[max_pair[1]])
+        plt.plot(self.dataframe[max_pair[0]])
+        plt.show
