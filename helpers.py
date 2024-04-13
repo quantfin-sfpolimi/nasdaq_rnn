@@ -287,7 +287,12 @@ class CorrelationAnalysis:
             for j in range(len(self.tickers)):
                 vals_i = self.dataframe[self.tickers[i]].values
                 vals_j = self.dataframe[self.tickers[j]].values
-                r_ij, p_ij = ss.stats.pearsonr(vals_i, vals_j)
+                r_ij = 0.0  # Initialize here
+                p_ij = 1.0  # Initialize here
+                try:
+                    r_ij, p_ij = ss.stats.pearsonr(vals_i, vals_j)
+                except:
+                    pass
                 corr_values[i, j] = r_ij
                 pvalue_array[i, j] = p_ij
                 
@@ -333,4 +338,5 @@ class CorrelationAnalysis:
         corr_num = corr_order[-1]
         max_pair = [self.tickers[corr_num // len(self.tickers)], self.tickers[corr_num % len(self.tickers)]]
         self.winner = max_pair
+        print(max_pair)
         PickleHelper(self.winner).pickle_dump('df_maxcorr_pair')
