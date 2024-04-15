@@ -16,6 +16,8 @@ from keras.callbacks import History
 from zlib import crc32
 import re
 
+import scipy.stats as ss
+
 history = History()  # Ignore, it helps with model_data function
 
 class PickleHelper:
@@ -70,20 +72,20 @@ class PickleHelper:
             print("This file " + file_path + " does not exists")
             return None
 
-def hashing_and_splitting(adj_close_df):
+def hashing_and_splitting(adj_close_stocks_dataframe):
     """
-    Splits the given DataFrame of adjusted close prices into training and testing sets based on checksum hashing.
+    Splits the given DataFrame of adjusted close dataframe into training and testing sets based on checksum hashing.
 
     Parameters:
-        adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
+        adj_close_stocks_dataframe (pandas.DataFrame): DataFrame containing adjusted close dataframe.
 
     Returns:
         Tuple[pandas.DataFrame, pandas.DataFrame]: A tuple containing the training and testing DataFrames.
     """
-    checksum = np.array([crc32(v) for v in adj_close_df.index.values])
+    checksum = np.array([crc32(v) for v in adj_close_stocks_dataframe.index.values])
     test_ratio = 0.2
     test_indices = checksum < test_ratio * 2 ** 32
-    return adj_close_df[~test_indices], adj_close_df[test_indices]
+    return adj_close_stocks_dataframe[~test_indices], adj_close_stocks_dataframe[test_indices]
 
 class DataFrameHelper:
     def __init__(self, filename, link, years, interval):
@@ -91,13 +93,13 @@ class DataFrameHelper:
         self.link = link
         self.years = years
         self.interval = interval
-        self.prices = []
+        self.dataframe = []
         self.tickers = []
 
-    # NOTA: FUNZIONE LOAD MODIFICATA, non ritorna piu nulla ma aggiorna direttamente self.prices e self.tickers
+    #NOTE: FUNZIONE LOAD MODIFICATA, non ritorna piu nulla ma aggiorna direttamente self.dataframe e self.tickers
     def load(self):
         """
-        Load a DataFrame of stock prices from a pickle file if it exists, otherwise create a new DataFrame.
+        Load a DataFrame of stock dataframe from a pickle file if it exists, otherwise create a new DataFrame.
 
         Parameters: Obj
             self
@@ -110,11 +112,11 @@ class DataFrameHelper:
         file_path = "./pickle_files/" + self.filename
 
         if os.path.isfile(file_path):
-            self.prices = PickleHelper.pickle_load(self.filename).obj
-            self.tickers = self.prices.columns.tolist()
+            self.dataframe = PickleHelper.pickle_load(self.filename).obj
+            self.tickers = self.dataframe.columns.tolist()
         else:
             self.tickers = self.get_stockex_tickers()
-            self.prices = self.loaded_df()
+            self.dataframe = self.loaded_df()
 
         return None
 
@@ -148,18 +150,20 @@ class DataFrameHelper:
         Returns:
             pandas.DataFrame: DataFrame containing downloaded stock price data.
         """
+        # simo's login with obb platform credetial
+        obb.account.login(email='simo05062003@gmail.com', password='##2yTFb2F4Zd9z')
         stocks_dict = {}
         time_window = 365 * self.years
         start_date = dt.date.today() - dt.timedelta(time_window)
         end_date = dt.date.today()
         for i, ticker in enumerate(self.tickers):
             print('Getting {} ({}/{})'.format(ticker, i, len(self.tickers)))
-            prices = obb.equity.price.historical(
+            dataframe = obb.equity.price.historical(
                 ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=self.interval).to_df()
-            stocks_dict[ticker] = prices['close']
+            stocks_dict[ticker] = dataframe['close']
 
-        stocks_prices = pd.DataFrame.from_dict(stocks_dict)
-        return stocks_prices
+        stocks_dataframe = pd.DataFrame.from_dict(stocks_dict)
+        return stocks_dataframe
 
     def clean_df(self, percentage):
         """
@@ -178,29 +182,28 @@ class DataFrameHelper:
             percentage = percentage / 100
 
         for ticker in self.tickers:
-            nan_values = self.prices[ticker].isnull().values.any()
+            nan_values = self.dataframe[ticker].isnull().values.any()
             if nan_values:
-                count_nan = self.prices[ticker].isnull().sum()
-                if count_nan > (len(self.prices) * percentage):
-                    self.prices.drop(ticker, axis=1, inplace=True)
+                count_nan = self.dataframe[ticker].isnull().sum()
+                if count_nan > (len(self.dataframe) * percentage):
+                    self.dataframe.drop(ticker, axis=1, inplace=True)
 
-        self.prices.ffill(axis=1, inplace=True) 
-        PickleHelper(obj=self.prices).pickle_dump(filename='cleaned_nasdaq_dataframe')
-        return None
+        self.dataframe.ffill(axis=1, inplace=True) 
+        PickleHelper(obj=self.dataframe).pickle_dump(filename='cleaned_nasdaq_dataframe')
 
-def xtrain_ytrain(adj_close_df):
+def xtrain_ytrain(adj_close_stocks_dataframe):
     """
     Splits the DataFrame into training and testing sets, normalizes the data, and prepares it for LSTM model training.
 
     Parameters:
-        adj_close_df (pandas.DataFrame): DataFrame containing adjusted close prices.
+        adj_close_stocks_dataframe (pandas.DataFrame): DataFrame containing adjusted close dataframe.
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, MinMaxScaler]: A tuple containing training and testing data along with the scaler.
     """
-    split_index = int((len(adj_close_df)) * 0.80)
-    train_set = pd.DataFrame(adj_close_df.iloc[0:split_index])
-    test_set = pd.DataFrame(adj_close_df.iloc[split_index:])
+    split_index = int((len(adj_close_stocks_dataframe)) * 0.80)
+    train_set = pd.DataFrame(adj_close_stocks_dataframe.iloc[0:split_index])
+    test_set = pd.DataFrame(adj_close_stocks_dataframe.iloc[split_index:])
 
     sc = MinMaxScaler(feature_range=(0, 1))
     sc.fit(train_set)
@@ -239,8 +242,7 @@ def lstm_model(xtrain, ytrain):
                   return_sequences=True, input_shape=(xtrain.shape[1], 1)))
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
-    model.add
-        
+    model.add #FIXME: something weird happened here
 
 class CorrelationAnalysis:
     def __init__(self, prices, tickers, start_datetime, end_datetime):
