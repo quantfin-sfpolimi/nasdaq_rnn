@@ -1,7 +1,7 @@
 
 from helpers import DataFrameHelper, CorrelationAnalysis
 
-df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100', years=10, interval='5m')
+df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100', years=10, interval='2m')
 
 #load data, clean data frame (closing stock prices)
 df_nasdaq.load()
