@@ -191,6 +191,7 @@ class DataFrameHelper:
                     self.dataframe.drop(ticker, axis=1, inplace=True)
 
         self.dataframe.ffill(axis=1, inplace=True) 
+        
         PickleHelper(obj=self.dataframe).pickle_dump(filename='cleaned_nasdaq_dataframe')
 
 def xtrain_ytrain(adj_close_stocks_dataframe):
@@ -289,14 +290,9 @@ class CorrelationAnalysis:
         pvalue_array = np.zeros([len(self.tickers), len(self.tickers)])
         for i in range(len(self.tickers)):
             for j in range(len(self.tickers)):
-                vals_i = self.dataframe[self.tickers[i]].values
-                vals_j = self.dataframe[self.tickers[j]].values
-                r_ij = 0.0  # Initialize here
-                p_ij = 1.0  # Initialize here
-                try:
-                    r_ij, p_ij = ss.stats.pearsonr(vals_i, vals_j)
-                except:
-                    pass
+                vals_i = self.dataframe[self.tickers[i]].to_numpy()
+                vals_j = self.dataframe[self.tickers[j]].to_numpy()
+                r_ij, p_ij = ss.stats.pearsonr(vals_i, vals_j)
                 corr_values[i, j] = r_ij
                 pvalue_array[i, j] = p_ij
                 
