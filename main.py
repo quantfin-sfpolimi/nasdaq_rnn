@@ -10,7 +10,6 @@ df_nasdaq.load()
 df_nasdaq.clean_df(10)
 
 corr_study = CorrelationAnalysis(dataframe=df_nasdaq.dataframe, tickers=df_nasdaq.tickers, start_datetime='2024-03-01 09:30:00', end_datetime='2024-03-31 15:30:00')
-
 corr_study.get_correlated_stocks()
 corr_study.corr_stocks_pair()
 corr_study.plot_corr_matrix()

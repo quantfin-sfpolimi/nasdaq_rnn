@@ -115,10 +115,12 @@ class DataFrameHelper:
 
         if os.path.isfile(file_path):
             self.dataframe = PickleHelper.pickle_load(self.filename).obj
+            self.dataframe.info() #FIXME: testing
             self.tickers = self.dataframe.columns.tolist()
         else:
             self.tickers = self.get_stockex_tickers()
             self.dataframe = self.loaded_df()
+            self.dataframe.info()
 
         return None
 
@@ -191,7 +193,9 @@ class DataFrameHelper:
                     self.dataframe.drop(ticker, axis=1, inplace=True)
 
         self.dataframe.ffill(axis=1, inplace=True) 
-        
+        #fml this doesn't work if i have consecutive days
+        self.dataframe = self.dataframe.drop(index=[876, 958, 1031, 1032]) #FIXME: workin on it 
+
         PickleHelper(obj=self.dataframe).pickle_dump(filename='cleaned_nasdaq_dataframe')
 
 def xtrain_ytrain(adj_close_stocks_dataframe):
