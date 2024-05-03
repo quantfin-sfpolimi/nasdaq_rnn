@@ -2,6 +2,7 @@
 import datetime as dt
 import numpy as np
 import os
+from dotenv import load_dotenv
 import pandas as pd
 import pickle
 import yfinance as yf
@@ -10,16 +11,15 @@ from matplotlib import pyplot as plt
 from twelvedata import TDClient
 import seaborn
 import matplotlib.colors
-from sklearn.preprocessing import MinMaxScaler
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout
-from keras.callbacks import History
+#from sklearn.preprocessing import MinMaxScaler
+#from keras.models import Sequential
+#from keras.layers import Dense, LSTM, Dropout
+#from keras.callbacks import History
 from zlib import crc32
 import re
-
 import scipy.stats as ss
 
-history = History()  # Ignore, it helps with model_data function
+#history = History()  # Ignore, it helps with model_data function
 
 class PickleHelper:
     def __init__(self, obj):
@@ -153,21 +153,25 @@ class DataFrameHelper:
         Returns:
             pandas.DataFrame: DataFrame containing downloaded stock price data.
         """
+        load_dotenv()
 
-        td = TDClient(apikey= API_KEY)
+        API_KEY = os.getenv('API_KEY')                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+
+        td = TDClient(apikey = API_KEY)
 
         stocks_dict = {}
         time_window = 365 * self.years
-        start_date = dt.date.today() - dt.timedelta(time_window)
-        end_date = dt.date.today()
+        start_date = (dt.date.today() - dt.timedelta(time_window)).strftime("%Y-%m-%d")
+        end_date = dt.date.today().strftime("%Y-%m-%d")
         for i, ticker in enumerate(self.tickers):
             print('Getting {} ({}/{})'.format(ticker, i, len(self.tickers)))
             dataframe = td.time_series(
                 symbol=ticker,
                 interval=self.interval,
+                outputsize=5000,
                 timezone="America/New_York",
-                start_date='2024-04-01 09:30:00',
-                end_date='2024-04-15 15:59:00',
+                start_date=start_date +' 09:30:00',
+                end_date=end_date +' 15:59:00',
             ).as_pandas()
             stocks_dict[ticker] = dataframe['close']
 
@@ -201,6 +205,9 @@ class DataFrameHelper:
         
         PickleHelper(obj=self.dataframe).pickle_dump(filename='cleaned_nasdaq_dataframe')
 
+
+
+'''
 def xtrain_ytrain(adj_close_stocks_dataframe):
     """
     Splits the DataFrame into training and testing sets, normalizes the data, and prepares it for LSTM model training.
@@ -253,6 +260,8 @@ def lstm_model(xtrain, ytrain):
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
     model.add #FIXME: something weird happened here
+'''
+
 
 class CorrelationAnalysis:
     """
