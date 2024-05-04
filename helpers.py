@@ -11,15 +11,15 @@ from matplotlib import pyplot as plt
 from twelvedata import TDClient
 import seaborn
 import matplotlib.colors
-#from sklearn.preprocessing import MinMaxScaler
-#from keras.models import Sequential
-#from keras.layers import Dense, LSTM, Dropout
-#from keras.callbacks import History
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Dropout
+from keras.callbacks import History
 from zlib import crc32
 import re
 import scipy.stats as ss
 
-#history = History()  # Ignore, it helps with model_data function
+history = History()  # Ignore, it helps with model_data function
 
 class PickleHelper:
     def __init__(self, obj):
@@ -207,7 +207,7 @@ class DataFrameHelper:
 
 
 
-'''
+
 def xtrain_ytrain(adj_close_stocks_dataframe):
     """
     Splits the DataFrame into training and testing sets, normalizes the data, and prepares it for LSTM model training.
@@ -260,7 +260,7 @@ def lstm_model(xtrain, ytrain):
     model.add(Dropout(0.2))
     model.add(LSTM(units=60, activation='relu', return_sequences=True))
     model.add #FIXME: something weird happened here
-'''
+
 
 
 class CorrelationAnalysis:
