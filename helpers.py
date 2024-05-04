@@ -153,26 +153,16 @@ class DataFrameHelper:
         Returns:
             pandas.DataFrame: DataFrame containing downloaded stock price data.
         """
-        load_dotenv()
-
-        API_KEY = os.getenv('API_KEY')                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
-
-        td = TDClient(apikey = API_KEY)
-
+        # simo's login with obb platform credetial
+        obb.account.login(email='simo05062003@gmail.com', password='##2yTFb2F4Zd9z')
         stocks_dict = {}
         time_window = 365 * self.years
-        start_date = (dt.date.today() - dt.timedelta(time_window)).strftime("%Y-%m-%d")
-        end_date = dt.date.today().strftime("%Y-%m-%d")
+        start_date = dt.date.today() - dt.timedelta(time_window)
+        end_date = dt.date.today()
         for i, ticker in enumerate(self.tickers):
             print('Getting {} ({}/{})'.format(ticker, i, len(self.tickers)))
-            dataframe = td.time_series(
-                symbol=ticker,
-                interval=self.interval,
-                outputsize=5000,
-                timezone="America/New_York",
-                start_date=start_date +' 09:30:00',
-                end_date=end_date +' 15:59:00',
-            ).as_pandas()
+            dataframe = obb.equity.price.historical(
+                ticker, start_date=start_date, end_date=end_date, provider="yfinance", interval=self.interval).to_df()
             stocks_dict[ticker] = dataframe['close']
 
         stocks_dataframe = pd.DataFrame.from_dict(stocks_dict)
@@ -201,7 +191,7 @@ class DataFrameHelper:
                 if count_nan > (len(self.dataframe) * percentage):
                     self.dataframe.drop(ticker, axis=1, inplace=True)
 
-        self.dataframe.ffill(axis=1, inplace=True) 
+        self.dataframe.fillna(method='ffill', inplace=True)
         
         PickleHelper(obj=self.dataframe).pickle_dump(filename='cleaned_nasdaq_dataframe')
 
