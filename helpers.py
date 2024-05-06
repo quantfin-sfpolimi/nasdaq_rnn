@@ -18,6 +18,7 @@ from keras.callbacks import History
 from zlib import crc32
 import re
 import scipy.stats as ss
+import time
 
 history = History()  # Ignore, it helps with model_data function
 
@@ -166,14 +167,16 @@ class DataFrameHelper:
         end_date = dt.date.today().strftime("%Y-%m-%d")
         for i, ticker in enumerate(self.tickers):
             print('Getting {} ({}/{})'.format(ticker, i, len(self.tickers)))
+            #FIXME: add dataframe concatenation algorithm
             dataframe = td.time_series(
                 symbol=ticker,
                 interval=self.interval,
                 outputsize=5000,
                 timezone="America/New_York",
-                start_date=start_date +' 09:30:00',
-                end_date=end_date +' 15:59:00',
+                #start_date=start_date + ' 09:30:00',
+                #end_date=end_date + ' 15:59:00',
             ).as_pandas()
+            time.sleep(1)
             stocks_dict[ticker] = dataframe['close']
 
         stocks_dataframe = pd.DataFrame.from_dict(stocks_dict)
