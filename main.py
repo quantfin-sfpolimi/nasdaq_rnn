@@ -2,7 +2,7 @@
 from helpers import DataFrameHelper, CorrelationAnalysis
 from dotenv import load_dotenv
 
-df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100', years=10, interval='1m')
+df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100', years=1, interval='1min')
 
 
 

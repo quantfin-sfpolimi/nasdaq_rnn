@@ -162,8 +162,8 @@ class DataFrameHelper:
 
         stocks_dict = {}
         time_window = 365 * self.years
-        start_date = dt.date.today() - dt.timedelta(time_window)
-        end_date = dt.date.today()
+        start_date = (dt.date.today() - dt.timedelta(time_window)).strftime("%Y-%m-%d")
+        end_date = dt.date.today().strftime("%Y-%m-%d")
         for i, ticker in enumerate(self.tickers):
             print('Getting {} ({}/{})'.format(ticker, i, len(self.tickers)))
             dataframe = td.time_series(
