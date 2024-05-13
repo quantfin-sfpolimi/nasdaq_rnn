@@ -24,6 +24,8 @@ print(df_nasdaq.dataframe)
 #if over 10% of data is Nan, drop the ticker; remaining NAN will be replaced with (t-1)
 #df_nasdaq.clean_df(5)
 
+'''
+
 shifted_dataframe = df_nasdaq.dataframe.copy(deep = True)
 shifted_dataframe = shifted_dataframe.shift(10, axis = 0)
 
@@ -40,6 +42,8 @@ corr_study = CorrelationAnalysis(dataframe=concat_dataframe, tickers=list(concat
 corr_study.get_correlated_stocks()
 corr_study.corr_stocks_pair()
 corr_study.plot_corr_matrix()
+
+'''
 
 
 
