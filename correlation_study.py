@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import seaborn
 import matplotlib.colors
 import scipy.stats as ss
+from scipy import signal
 
 from memory_handling import PickleHelper
 
@@ -107,3 +108,51 @@ class CorrelationAnalysis:
         plt.plot(self.dataframe[max_pair[1]])
         plt.plot(self.dataframe[max_pair[0]])
         plt.show
+
+    def print_cross_corr(self, threshold, max_lag, volumes=None):
+
+        corr_list = []
+
+        for i in range(0, len(self.dataframe.columns)):
+            for j in range(0, len(self.dataframe.columns)):
+
+                if (i != j):
+                    corr_list = signal.correlate(self.dataframe[self.tickers[i]], self.dataframe[self.tickers[j]])
+                    norm_corr_list = corr_list / np.sqrt(np.sum(np.abs(self.dataframe[self.tickers[i]])**2)*np.sum(np.abs(self.dataframe[self.tickers[j]])**2))
+
+                    for k, corr in enumerate(norm_corr_list):
+
+                        if (k>=max_lag):
+                            break
+                        
+                        if(corr >= threshold):
+                            print(f"{self.tickers[i]} and {self.tickers[j]} are correlated ({norm_corr_list[k]}) with lag = {k+1}") 
+    
+    def print_corr(self, threshold, max_lag, volumes=None):
+            
+        for shift in range(0, max_lag+1):
+            
+            tmp_df = pd.DataFrame()
+            shifted_df = self.dataframe.copy(deep = True)
+            shifted_df = shifted_df.shift(shift, axis = 0)
+
+            for ticker in self.tickers:
+                shifted_df.rename({ticker:ticker+'_shifted'},axis = 1, inplace = True)
+
+            concat_dataframe =  pd.concat([self.dataframe.iloc[shift: , :], shifted_df.iloc[shift: , :]], axis=1)
+
+            corr_matrix = concat_dataframe.corr('pearson')
+
+            for i in range(0, len(self.dataframe.columns)):
+                for j in range(len(self.dataframe.columns), len(concat_dataframe.columns)):
+
+                    if (i != j-len(self.dataframe.columns)):
+
+                        #print(corr[0][1])
+                        
+                        if(corr_matrix.iloc[i, j] >= threshold):
+                            print(f"{concat_dataframe.columns.to_list()[i]} and {concat_dataframe.columns.to_list()[j]} are correlated ({corr_matrix.iloc[i, j]}, shift = {shift})") 
+            
+            print('\n\n')
+
+

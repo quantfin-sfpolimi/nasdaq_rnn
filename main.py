@@ -15,6 +15,10 @@ df_nasdaq.load()
 print(df_nasdaq.tickers)
 print(df_nasdaq.dataframe)
 
+corr_study = CorrelationAnalysis(df_nasdaq.dataframe, df_nasdaq.tickers, '2024-04-10 09:30:00', '2024-05-08 15:59:00')
+
+corr_study.print_corr(0.965, 2)
+
 #FIXME: temporary fix for clean_df
 #df_nasdaq.dataframe.fillna(method='ffill', inplace=True)
 #df_nasdaq.dataframe.dropna(inplace=True)
