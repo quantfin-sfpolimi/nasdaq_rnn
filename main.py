@@ -1,13 +1,15 @@
 
 from helpermodules.df_cleaning import DataFrameHelper
 from helpermodules.correlation_study import CorrelationAnalysis
-df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100', years=10, interval='2m')
+
+df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100',months=2, frequency='1min')
 
 #load data, clean data frame (closing stock prices)
-df_nasdaq.load()
+df_nasdaq.getdata() 
+
 
 #if over 10% of data is Nan, drop the ticker; remaining NAN will be replaced with (t-1)
-df_nasdaq.clean_df(10)
+df_nasdaq.clean_df(5)
 
 corr_study = CorrelationAnalysis(dataframe=df_nasdaq.dataframe, tickers=df_nasdaq.tickers, start_datetime='2024-03-01 09:30:00', end_datetime='2024-03-31 15:30:00')
 corr_study.get_correlated_stocks()

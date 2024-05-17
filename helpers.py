@@ -348,3 +348,4 @@ class CorrelationAnalysis:
         plt.plot(self.dataframe[max_pair[1]])
         plt.plot(self.dataframe[max_pair[0]])
         plt.show
+
