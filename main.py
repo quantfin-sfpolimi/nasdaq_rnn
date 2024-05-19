@@ -2,31 +2,24 @@
 from df_cleaning import DataFrameHelper 
 from correlation_study import CorrelationAnalysis
 from memory_handling import PickleHelper
+from backtesting import BacktestingPairs 
 from dotenv import load_dotenv
 import pandas as pd
 
 df_nasdaq = DataFrameHelper(filename='cleaned_nasdaq_dataframe', link='https://en.wikipedia.org/wiki/Nasdaq-100', months=1, frequency='1min')
-
-
-
-#load data, clean data frame (closing stock prices)
 df_nasdaq.load()
 
-print(df_nasdaq.tickers)
 print(df_nasdaq.dataframe)
 
-corr_study = CorrelationAnalysis(df_nasdaq.dataframe, df_nasdaq.tickers, '2024-04-10 09:30:00', '2024-05-08 15:59:00')
+#corr_study = CorrelationAnalysis(df_nasdaq.dataframe, df_nasdaq.tickers, '2024-04-07 09:30:00', '2024-04-21 15:59:00')
 
-corr_study.print_corr(0.965, 5)
+#corr_study.print_corr(0.965, 5)
 
-#FIXME: temporary fix for clean_df
-#df_nasdaq.dataframe.fillna(method='ffill', inplace=True)
-#df_nasdaq.dataframe.dropna(inplace=True)
 
-#PickleHelper(obj=df_nasdaq.dataframe).pickle_dump(filename='cleaned_nasdaq_dataframe')
+backtest = BacktestingPairs(df_nasdaq, 10000, 'KDP', 'AZN')
+backtest.strategy_1(2, '2024-04-22 09:30:00', '2024-05-08 15:59:00')
 
-#if over 10% of data is Nan, drop the ticker; remaining NAN will be replaced with (t-1)
-#df_nasdaq.clean_df(5)
+
 
 '''
 

@@ -132,6 +132,10 @@ class CorrelationAnalysis:
                             print(f"{self.tickers[i]} and {self.tickers[j]} are correlated ({norm_corr_list[k]}) with lag = {k+1}") 
     
     def print_corr(self, threshold, max_lag, volume_filter=None):
+        
+        self.dataframe = self.dataframe.loc[self.start_datetime : self.end_datetime]
+
+        print(self.dataframe)
 
         if(volume_filter == None):
             pass
@@ -140,7 +144,6 @@ class CorrelationAnalysis:
             
         for shift in range(0, max_lag+1):
             
-            tmp_df = pd.DataFrame()
             shifted_df = self.dataframe.copy(deep = True)
             shifted_df = shifted_df.shift(shift, axis = 0)
 
