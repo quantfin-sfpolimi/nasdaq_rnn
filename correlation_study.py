@@ -8,6 +8,9 @@ import seaborn
 import matplotlib.colors
 import scipy.stats as ss
 from scipy import signal
+from twelvedata import TDClient
+from dotenv import load_dotenv
+import os
 
 from memory_handling import PickleHelper
 
@@ -128,7 +131,12 @@ class CorrelationAnalysis:
                         if(corr >= threshold):
                             print(f"{self.tickers[i]} and {self.tickers[j]} are correlated ({norm_corr_list[k]}) with lag = {k+1}") 
     
-    def print_corr(self, threshold, max_lag, volumes=None):
+    def print_corr(self, threshold, max_lag, volume_filter=None):
+
+        if(volume_filter == None):
+            pass
+        else:
+            pass
             
         for shift in range(0, max_lag+1):
             
