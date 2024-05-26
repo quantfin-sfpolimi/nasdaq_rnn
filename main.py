@@ -8,9 +8,9 @@ df_nasdaq = IndexData_Retrieval(filename='nasdaq_dataframe', link='https://en.wi
 df_nasdaq.getdata() 
 
 
-#if over 10% of data is Nan, drop the ticker; remaining NAN will be replaced with (t-1)
+#FIXME: if over 10% of data is Nan, drop the ticker; remaining NAN will be replaced with (t-1)
 df_nasdaq.clean_df(5)
-
+#TODO: readapt correlation analysis to new format df
 corr_study = CorrelationAnalysis(df_nasdaq)
 corr_study.get_correlated_stocks()
 corr_study.corr_stocks_pair()
