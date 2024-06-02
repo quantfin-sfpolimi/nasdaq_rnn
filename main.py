@@ -9,10 +9,9 @@ df_nasdaq.getdata()
 
 
 #FIXME: if over 10% of data is Nan, drop the ticker; remaining NAN will be replaced with (t-1)
-df_nasdaq.clean_df(5)
+#df_nasdaq.clean_df(5)
 #TODO: readapt correlation analysis to new format df
-corr_study = CorrelationAnalysis(df_nasdaq)
-corr_study.get_correlated_stocks()
-corr_study.corr_stocks_pair()
-corr_study.plot_corr_matrix()
+corr_study = CorrelationAnalysis(df_nasdaq.df, df_nasdaq.tickers)
+corr_study.print_cross_corr(0.965, 5)
+corr_study.print_corr(0.965, 5)
 
